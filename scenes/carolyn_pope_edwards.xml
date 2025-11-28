@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scene version="0.6.0">
+    <sensor type="perspective">
+        <transform name="to_world">
+            <lookat origin="0, 0, 10" target="0, 0, 0" up="0, 1, 0"/>
+        </transform>
+        <float name="fov" value="45"/>
+    </sensor>
+
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+            <scale x="50.0" y="15.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.5, 0.5, 0.5"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="0" z="4.0"/>
+            <scale x="50.0" y="15.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="15.0" z="2.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="50.0" y="2.0" z="1"/>
+        </transform>
+        <bsdf type="dielectric"><float name="int_ior" value="1.5"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="-15.0" z="2.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="50.0" y="2.0" z="1"/>
+        </transform>
+        <bsdf type="dielectric"><float name="int_ior" value="1.5"/></bsdf>
+    </shape></scene>

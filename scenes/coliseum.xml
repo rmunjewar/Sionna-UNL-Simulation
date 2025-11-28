@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scene version="0.6.0">
+    <sensor type="perspective">
+        <transform name="to_world">
+            <lookat origin="0, 0, 10" target="0, 0, 0" up="0, 1, 0"/>
+        </transform>
+        <float name="fov" value="45"/>
+    </sensor>
+
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="0" z="0"/>
+            <scale x="40.0" y="25.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.2"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="0" z="10.0"/>
+            <scale x="40.0" y="25.0" z="1"/>
+        </transform>
+        <bsdf type="conductor"><rgb name="specularReflectance" value="1, 1, 1"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="25.0" z="5.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="40.0" y="5.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="0" y="-25.0" z="5.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="40.0" y="5.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="40.0" y="0" z="5.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="0.25" y="5.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
+    </shape>
+    <shape type="rectangle">
+        <transform name="to_world">
+            <translate x="-40.0" y="0" z="5.0"/>
+            <rotate x="1" angle="90"/>
+            <scale x="0.25" y="5.0" z="1"/>
+        </transform>
+        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
+    </shape></scene>
