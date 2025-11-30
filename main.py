@@ -10,18 +10,11 @@ try:
     from sionna.rt import load_scene, Transmitter, Receiver, PlanarArray
     import tensorflow as tf
     SIONNA_AVAILABLE = True
-    print("✓ Sionna loaded successfully")
     
     gpus = tf.config.list_physical_devices('GPU')
-    if gpus:
-        tf.config.experimental.set_memory_growth(gpus[0], True)
-        print(f"✓ Using GPU: {gpus[0]}")
-    else:
-        print("⚠ No GPU found, using CPU (slower)")
         
 except ImportError:
     SIONNA_AVAILABLE = False
-    print("⚠ Sionna not available, using simplified propagation model")
 
 CONFIG = {
     'data_file': 'Wireless Communications - Data Collection - Data-2.csv',
@@ -36,108 +29,32 @@ CONFIG = {
 BUILDING_NAME_MAP = {
     'Kiewit': 'Kiewit',
     'Kauffman': 'Kauffman',
-    'Bessey': 'Bessey',
-    'Love Library': 'Love Library',
-    'Love Library South': 'Love Library',
-    'Adele Coryell': 'Love Library',
-    'Carolyn Pope Edwards': 'Carolyn Pope Edwards',
-    'Avery': 'Avery',
-    'Coliseum': 'Coliseum',
-    'Union': 'Union',
-    'Oldfather': 'Oldfather',
+    'Adele Coryell': 'Adele Coryell',
+    'Love Library South': 'Love Library South',
     'Selleck': 'Selleck',
-    'Brace': 'Brace',
-    'Burnett': 'Burnett',
-    'Memorial Stadium': 'Memorial Stadium'
+    'Brace': 'Brace'
 }
 
 BUILDING_TO_SCENE = {
     'Kiewit': 'kiewit',
     'Kauffman': 'kauffman',
-    'Bessey': 'bessey',
-    'Love Library': 'love_library',
-    'Carolyn Pope Edwards': 'carolyn_pope_edwards',
-    'Avery': 'avery',
-    'Coliseum': 'coliseum',
-    'Union': 'union',
-    'Oldfather': 'oldfather',
+    'Adele Coryell': 'adele_coryell',
+    'Love Library South': 'love_library_south',
     'Selleck': 'selleck',
-    'Brace': 'brace',
-    'Burnett': 'burnett',
-    'Memorial Stadium': 'memorial_stadium'
+    'Brace': 'brace'
 }
 
 def load_measurement_data(filepath):
     
-    print(f"\n{'='*70}")
-    print("LOADING MEASUREMENT DATA")
-    print(f"{'='*70}")
-    
-    if not os.path.exists(filepath):
-        print(f"⚠ Data file not found: {filepath}")
-        print("Creating sample data from your provided measurements...")
-        
-        data = {
-            'Hall': [
-                'Kiewit', 'Kiewit', 'Kiewit', 'Kiewit',
-                'Love Library', 'Love Library', 'Love Library', 'Love Library',
-                'Selleck', 'Selleck',
-                'Brace', 'Brace'
-            ],
-            'Location': [
-                'A310', 'A310', 'Lobby', 'Lobby',
-                'Adele Coryell Schmoker Learning Commons', 'Schmoker Learning Commons',
-                'South Lobby', 'Lobby',
-                'Dining Hall', 'Dining Hall',
-                '210', '210'
-            ],
-            'SSID': [
-                'eduroam', 'NU-Guest', 'eduroam', 'NU-Guest',
-                'eduroam', 'NU-Guest', 'eduroam', 'NU-Guest',
-                'eduroam', 'NU-Guest',
-                'eduroam', 'NU-Guest'
-            ],
-            'Frequency (MHz)': [
-                5200, 5745, 5784, 5785,
-                5260, 5260, 5745, 5745,
-                5745, 5745,
-                5765, 5765
-            ],
-            'RSSI (dBm)': [
-                -63, -59, -51, -54,
-                -59, -55, -50, -47,
-                -61, -62,
-                -53, -50
-            ],
-            'Channel': [
-                40, 149, 157, 157,
-                52, 52, 149, 149,
-                149, 149,
-                153, 153
-            ],
-            'Time': [
-                '11.19.25 @ 16:15', '11.19.25 @ 16:31', '11.19.25 @ 17:09', '11.19.25 @ 17:01',
-                '11.19.25 @ 18:19', '11.19.25 @ 18:14', '11.19.25 @ 18:27', '11.19.25 @ 18:34',
-                '11.19.25 @ 17:46', '11.19.25 @ 18:01',
-                '11.21.25 @ 12:25', '11.21.25 @ 12:30'
-            ]
-        }
-        
-        df = pd.DataFrame(data)
-        
-        df.to_csv(filepath, index=False)
-        print(f"✓ Created sample data file: {filepath}")
-        
-    else:
+    try:
         try:
-            try:
-                df = pd.read_csv(filepath, quotechar='"', escapechar='\\', on_bad_lines='skip')
-            except TypeError:
-                df = pd.read_csv(filepath, quotechar='"', on_bad_lines='skip', engine='python')
-        except Exception as e:
-            print(f"⚠ Error reading CSV: {e}")
-            df = pd.read_csv(filepath, quotechar='"', engine='python', error_bad_lines=False, warn_bad_lines=False)
-        print(f"✓ Loaded data from: {filepath}")
+            df = pd.read_csv(filepath, quotechar='"', escapechar='\\', on_bad_lines='skip')
+        except TypeError:
+            df = pd.read_csv(filepath, quotechar='"', on_bad_lines='skip', engine='python')
+    except Exception as e:
+        print(f"Error reading CSV: {e}")
+        df = pd.read_csv(filepath, quotechar='"', engine='python', error_bad_lines=False, warn_bad_lines=False)
+    print(f"Loaded data from: {filepath}")
     
     df.columns = df.columns.str.strip()
     
@@ -152,8 +69,8 @@ def load_measurement_data(filepath):
     
     df = df[df['Hall'].notna()]
     
-    print(f"✓ Loaded {len(df)} measurements from {df['Hall'].nunique()} buildings")
-    print(f"  Buildings: {', '.join(df['Hall'].unique())}")
+    print(f" Loaded {len(df)} measurements from {df['Hall'].nunique()} buildings")
+    print(f"Buildings: {', '.join(df['Hall'].unique())}")
     
     return df
 
@@ -196,10 +113,10 @@ class SionnaRayTracer:
         try:
             self.scene = load_scene(self.scene_file)
             self.scene.frequency = self.frequency_hz
-            print(f"✓ Loaded scene: {self.scene_file}")
+            print(f"Loaded scene: {self.scene_file}")
             return True
         except Exception as e:
-            print(f"✗ Error loading scene: {e}")
+            print(f"Error loading scene: {e}")
             return False
     
     def setup_transmitter(self, position):
@@ -218,7 +135,7 @@ class SionnaRayTracer:
             orientation=[0, 0, 0]
         )
         self.scene.add(tx)
-        print(f"✓ Added transmitter at {position}")
+        print(f"Added transmitter at {position}")
     
     def setup_receivers(self, positions):
         self.scene.rx_array = PlanarArray(
@@ -238,7 +155,7 @@ class SionnaRayTracer:
             )
             self.scene.add(rx)
         
-        print(f"✓ Added {len(positions)} receivers")
+        print(f"Added {len(positions)} receivers")
     
     def compute_coverage(self, max_depth=5, num_samples=1e6):
         print(f"Running ray tracing (max_depth={max_depth}, samples={num_samples:.0e})...")
@@ -267,11 +184,11 @@ class SionnaRayTracer:
                 
                 rssi_values.append(float(rssi))
             
-            print(f"✓ Ray tracing complete")
+            print(f"Ray tracing complete")
             return np.array(rssi_values)
             
         except Exception as e:
-            print(f"✗ Ray tracing failed: {e}")
+            print(f"Ray tracing failed: {e}")
             return None
 
 class SimulationRunner:
@@ -321,13 +238,13 @@ class SimulationRunner:
     def simulate_building(self, building_name):
         
         print(f"\n{'='*70}")
-        print(f"SIMULATING: {building_name}")
+        print(f"Simulating: {building_name}")
         print(f"{'='*70}")
         
         building_data = self.data[self.data['Hall'] == building_name].copy()
         
         if len(building_data) == 0:
-            print(f"⚠ No measurements for {building_name}")
+            print(f"No measurements for {building_name}")
             return None
         
         print(f"Found {len(building_data)} measurements")
@@ -353,13 +270,17 @@ class SimulationRunner:
             )
             
             if not os.path.exists(scene_file):
-                scene_file = os.path.join(
+                alt_scene_file = os.path.join(
                     self.config['scenes_dir'],
                     f"{building_name.lower().replace(' ', '_')}.xml"
                 )
+                if os.path.exists(alt_scene_file):
+                    scene_file = alt_scene_file
+                else:
+                    print(f"⚠ Scene file not found: {scene_file}")
+                    print(f"   Also checked: {alt_scene_file}")
             
             if os.path.exists(scene_file):
-                print(f"Attempting Sionna ray tracing with {scene_file}...")
                 try:
                     tracer = SionnaRayTracer(scene_file, avg_frequency)
                     if tracer.load_scene():
@@ -371,12 +292,12 @@ class SimulationRunner:
                             method = "Sionna Ray Tracing"
                         
                 except Exception as e:
-                    print(f"✗ Sionna ray tracing failed: {e}")
+                    print(f"Sionna ray tracing failed: {e}")
             else:
-                print(f"⚠ Scene file not found: {scene_file}")
+                print(f"Scene file not found: {scene_file}")
         
         if simulated_rssi is None and self.config['fallback_to_simple']:
-            print("Using simplified propagation model...")
+            print("Using simplified propagation model")
             model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
             
             simulated_rssi = []
@@ -390,10 +311,10 @@ class SimulationRunner:
             method = "Simplified Model"
         
         if simulated_rssi is None:
-            print("✗ Simulation failed")
+            print("Simulation failed")
             return None
         
-        print(f"✓ Simulation complete using {method}")
+        print(f"Simulation complete using {method}")
         
         metrics = self.calculate_metrics(simulated_rssi, measured_rssi)
         
@@ -749,14 +670,21 @@ class SimulationRunner:
         print(f"\nResults saved in: {self.config['results_dir']}/")
 
 def main():
-    
-  
+    VALID_BUILDINGS = {'Kiewit', 'Kauffman', 'Adele Coryell', 'Love Library South', 'Selleck', 'Brace'}
     
     scenes_dir = CONFIG['scenes_dir']
     if not os.path.exists(scenes_dir) or len(os.listdir(scenes_dir)) == 0:
         print(f"⚠ No scene files found in '{scenes_dir}/'")
     
     data = load_measurement_data(CONFIG['data_file'])
+    
+    # Validate buildings in data
+    invalid_buildings = set(data['Hall'].unique()) - VALID_BUILDINGS
+    if invalid_buildings:
+        print(f"⚠ Warning: CSV contains unexpected buildings that will be ignored: {invalid_buildings}")
+    
+    data = data[data['Hall'].isin(VALID_BUILDINGS)]
+    print(f"✓ Processing {len(VALID_BUILDINGS)} validated buildings")
     
     runner = SimulationRunner(data, CONFIG)
     

@@ -141,11 +141,13 @@ def load_building_dimensions(csv_file='Wireless Communications - Data Collection
                 'floors': floors
             }
         
-        if 'Love Library' in building_dims:
-            if 'Adele Coryell' in building_dims and not building_dims['Adele Coryell'].get('length_ft'):
-                building_dims['Adele Coryell'] = building_dims['Love Library'].copy()
-            if 'Love Library South' in building_dims and not building_dims['Love Library South'].get('length_ft'):
-                building_dims['Love Library South'] = building_dims['Love Library'].copy()
+        # Validation: Check for expected buildings
+        expected_buildings = ['Kiewit', 'Kauffman', 'Adele Coryell', 'Love Library South', 'Selleck', 'Brace']
+        for building in expected_buildings:
+            if building not in building_dims:
+                print(f"⚠ Warning: {building} not found in CSV")
+            elif not building_dims[building].get('length_ft') or not building_dims[building].get('width_ft'):
+                print(f"⚠ Warning: {building} missing length or width")
         
         return building_dims
     except Exception as e:
@@ -158,8 +160,8 @@ def create_kiewit_scene(dims=None):
         L = ft_to_m(dims['length_ft'])
         W = ft_to_m(dims['width_ft'])
     else:
-        L = ft_to_m(363.53) 
-        W = ft_to_m(246.91)
+        L = ft_to_m(126.38) 
+        W = ft_to_m(245.73)
     
     scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
     scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
@@ -177,126 +179,91 @@ def create_kiewit_scene(dims=None):
 
 def create_kauffman_scene(dims=None):
     scene = BuildingSceneBuilder('kauffman')
-    L, W = 60.0, 20.0 
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.0], [L, W, 0.1], 'drywall')
-    
-    scene.add_wall([0, 2.0, 1.5], [L, 0.15, 3.0], 'drywall') 
-    scene.add_wall([0, -2.0, 1.5], [L, 0.15, 3.0], 'drywall') 
-    
-    scene.add_room([-20, 0, 0], [6, 4], 3.0, 'concrete')
-    
-    return scene
-
-def create_bessey_scene(dims=None):
-    scene = BuildingSceneBuilder('bessey')
     if dims and dims.get('length_ft') and dims.get('width_ft'):
         L = ft_to_m(dims['length_ft'])
         W = ft_to_m(dims['width_ft'])
     else:
-        L = ft_to_m(319.46)
-        W = ft_to_m(239.09)
+        L = ft_to_m(194.24)
+        W = ft_to_m(201.42)
     
     scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
     
-    scene.add_wall([0, W/2, 1.75], [L, 0.5, 3.5], 'brick')
-    scene.add_wall([0, -W/2, 1.75], [L, 0.5, 3.5], 'brick')
-    scene.add_wall([L/2, 0, 1.75], [0.5, W, 3.5], 'brick')
-    scene.add_wall([-L/2, 0, 1.75], [0.5, W, 3.5], 'brick')
-    
-    return scene
-
-def create_love_library_scene(dims=None):
-    scene = BuildingSceneBuilder('love_library')
-    
-    L, W = 80.0, 60.0
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,4.5], [L, W, 0.1], 'concrete')
-    
-    scene.add_window([0, W/2, 2.25], [L, 0.1, 4.5], 'glass') 
-    
-    for x in [-20, 0, 20]:
-        for y in [-20, 0, 20]:
-            scene.add_wall([x, y, 2.25], [0.8, 0.8, 4.5], 'concrete')
-            
-    return scene
-
-def create_edwards_scene(dims=None):
-    scene = BuildingSceneBuilder('carolyn_pope_edwards')
-    L, W = 100.0, 30.0
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,4.0], [L, W, 0.1], 'drywall')
-    
-    scene.add_window([0, W/2, 2.0], [L, 0.1, 4.0], 'glass')
-    scene.add_window([0, -W/2, 2.0], [L, 0.1, 4.0], 'glass')
-    
-    return scene
-
-def create_avery_scene(dims=None):
-    scene = BuildingSceneBuilder('avery')
-    L, W = 60.0, 40.0
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
-    
+    # Exterior walls
     scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
     scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
     
-    scene.add_room([10, 0, 0], [10, 8], 3.5, 'drywall')
+    # Internal rooms for chemistry building
+    scene.add_room([-L/4, -W/4, 0], [L/3, W/3], 3.5, 'drywall')
+    scene.add_room([L/4, W/4, 0], [L/3, W/3], 3.5, 'drywall')
     
-    return scene
-
-def create_coliseum_scene(dims=None):
-    scene = BuildingSceneBuilder('coliseum')
-    L, W = 80.0, 50.0 
-    H = 10.0
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'wood')
-    scene.add_ceiling([0,0,H], [L, W, 0.5], 'metal')
-    
-    scene.add_wall([0, W/2, H/2], [L, 0.5, H], 'brick')
-    scene.add_wall([0, -W/2, H/2], [L, 0.5, H], 'brick')
-    scene.add_wall([L/2, 0, H/2], [0.5, W, H], 'brick')
-    scene.add_wall([-L/2, 0, H/2], [0.5, W, H], 'brick')
+    # Stairwell area
+    scene.add_wall([0, 0, 1.75], [4.0, 4.0, 3.5], 'concrete')
     
     return scene
 
-def create_union_scene(dims=None):
-    scene = BuildingSceneBuilder('union')
-    if dims and dims.get('area_sqft'):
-        area_sqft = dims['area_sqft']
-        side_ft = np.sqrt(area_sqft)
-        L = ft_to_m(side_ft)
-        W = ft_to_m(side_ft)
-    else:
-        L, W = 50.0, 50.0
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,4.0], [L, W, 0.1], 'drywall')
-    
-    scene.add_room([0, 0, 0], [4, 2], 4.0, 'brick') 
-    
-    return scene
-
-def create_oldfather_scene(dims=None):
-    scene = BuildingSceneBuilder('oldfather')
+def create_adele_coryell_scene(dims=None):
+    scene = BuildingSceneBuilder('adele_coryell')
     if dims and dims.get('length_ft') and dims.get('width_ft'):
         L = ft_to_m(dims['length_ft'])
         W = ft_to_m(dims['width_ft'])
     else:
-        L = ft_to_m(126.55)
-        W = ft_to_m(74.88)
+        L = ft_to_m(128.03)
+        W = ft_to_m(252.56)
     
+    # Single floor library/learning commons
     scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.0], [L, W, 0.1], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
     
-    scene.add_room([-2, 0, 0], [6, 6], 3.0, 'concrete')
+    # Exterior walls
+    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
     
-    scene.add_wall([0, W/2, 1.5], [L, 0.3, 3.0], 'concrete')
-    scene.add_wall([0, -W/2, 1.5], [L, 0.3, 3.0], 'concrete')
+    # Windows on perimeter
+    scene.add_window([0, W/2, 1.75], [L*0.8, 0.1, 2.5], 'glass')
+    scene.add_window([0, -W/2, 1.75], [L*0.8, 0.1, 2.5], 'glass')
+    scene.add_window([L/2, 0, 1.75], [0.1, W*0.8, 2.5], 'glass')
+    scene.add_window([-L/2, 0, 1.75], [0.1, W*0.8, 2.5], 'glass')
+    
+    # Few internal walls for open study areas
+    scene.add_wall([0, 0, 1.75], [L*0.3, 0.15, 3.5], 'drywall')
+    
+    return scene
+
+def create_love_library_south_scene(dims=None):
+    scene = BuildingSceneBuilder('love_library_south')
+    if dims and dims.get('length_ft') and dims.get('width_ft'):
+        L = ft_to_m(dims['length_ft'])
+        W = ft_to_m(dims['width_ft'])
+    else:
+        L = ft_to_m(207.66)
+        W = ft_to_m(151.56)
+    
+    # 3-floor library
+    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
+    
+    # Exterior walls
+    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
+    
+    # Glass windows on exterior
+    scene.add_window([0, W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
+    scene.add_window([0, -W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
+    scene.add_window([L/2, 0, 1.75], [0.1, W*0.9, 2.5], 'glass')
+    scene.add_window([-L/2, 0, 1.75], [0.1, W*0.9, 2.5], 'glass')
+    
+    # Multiple internal support columns
+    column_spacing = 15.0
+    for x in np.arange(-L/3, L/3, column_spacing):
+        for y in np.arange(-W/3, W/3, column_spacing):
+            scene.add_wall([x, y, 1.75], [0.5, 0.5, 3.5], 'concrete')
     
     return scene
 
@@ -332,34 +299,6 @@ def create_brace_scene(dims=None):
     
     return scene
 
-def create_burnett_scene(dims=None):
-    scene = BuildingSceneBuilder('burnett')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(237.25)
-        W = ft_to_m(77.01)
-    
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
-    
-    scene.add_wall([0, 1.5, 1.75], [L, 0.15, 3.5], 'brick')
-    scene.add_wall([0, -1.5, 1.75], [L, 0.15, 3.5], 'brick')
-    
-    return scene
-
-def create_stadium_scene(dims=None):
-    scene = BuildingSceneBuilder('memorial_stadium')
-    L, W = 100.0, 20.0
-    H = 5.0
-    
-    scene.add_floor([0,0,0], [L, W, 0.5], 'concrete')
-    scene.add_ceiling([0,0,H], [L, W, 0.5], 'concrete')
-    
-    scene.add_wall([0, -W/2, H/2], [L, 1.0, H], 'concrete')
-    
-    return scene
 
 def main():
     print("Generating scenes based on CSV data with accurate measurements...")
@@ -369,19 +308,10 @@ def main():
     building_map = {
         'Kiewit': (create_kiewit_scene, 'kiewit'),
         'Kauffman': (create_kauffman_scene, 'kauffman'),
-        'Bessey': (create_bessey_scene, 'bessey'),
-        'Love Library': (create_love_library_scene, 'love_library'),
-        'Love Library South': (create_love_library_scene, 'love_library'),
-        'Adele Coryell': (create_love_library_scene, 'love_library'),
-        'Carolyn Pope Edwards': (create_edwards_scene, 'carolyn_pope_edwards'),
-        'Avery': (create_avery_scene, 'avery'),
-        'Coliseum': (create_coliseum_scene, 'coliseum'),
-        'Union': (create_union_scene, 'union'),
-        'Oldfather': (create_oldfather_scene, 'oldfather'),
+        'Adele Coryell': (create_adele_coryell_scene, 'adele_coryell'),
+        'Love Library South': (create_love_library_south_scene, 'love_library_south'),
         'Selleck': (create_selleck_scene, 'selleck'),
-        'Brace': (create_brace_scene, 'brace'),
-        'Burnett': (create_burnett_scene, 'burnett'),
-        'Memorial Stadium': (create_stadium_scene, 'memorial_stadium')
+        'Brace': (create_brace_scene, 'brace')
     }
     
     for building_name, (builder_func, scene_name) in building_map.items():
