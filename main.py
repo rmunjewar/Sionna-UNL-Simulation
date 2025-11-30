@@ -31,13 +31,11 @@ try:
         print("⚠ No GPU devices found, will use CPU")
         
 except ImportError as e:
-    print(f"❌ CRITICAL: Sionna Import Failed: {e}")
     print(f"   Error type: {type(e).__name__}")
     import traceback
     traceback.print_exc()
     SIONNA_AVAILABLE = False
 except Exception as e:
-    print(f"❌ CRITICAL: Unexpected error during Sionna import: {e}")
     print(f"   Error type: {type(e).__name__}")
     import traceback
     traceback.print_exc()
