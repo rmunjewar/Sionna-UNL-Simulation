@@ -5,15 +5,42 @@ from matplotlib.patches import Rectangle
 import os
 import sys
 
+# Set LLVM path for Sionna RT on macOS
+if sys.platform == 'darwin' and 'DRJIT_LIBLLVM_PATH' not in os.environ:
+    llvm_paths = [
+        '/opt/homebrew/opt/llvm@20/lib/libLLVM.dylib',
+        '/opt/homebrew/opt/llvm/lib/libLLVM.dylib',
+        '/usr/local/opt/llvm@20/lib/libLLVM.dylib',
+        '/usr/local/opt/llvm/lib/libLLVM.dylib'
+    ]
+    for llvm_path in llvm_paths:
+        if os.path.exists(llvm_path):
+            os.environ['DRJIT_LIBLLVM_PATH'] = llvm_path
+            break
+
 try:
     import sionna
-    from sionna.rt import load_scene, Transmitter, Receiver, PlanarArray
+    from sionna.rt import load_scene, Transmitter, Receiver, PlanarArray, PathSolver
     import tensorflow as tf
     SIONNA_AVAILABLE = True
     
     gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        print(f"✓ Found {len(gpus)} GPU device(s)")
+    else:
+        print("⚠ No GPU devices found, will use CPU")
         
-except ImportError:
+except ImportError as e:
+    print(f"❌ CRITICAL: Sionna Import Failed: {e}")
+    print(f"   Error type: {type(e).__name__}")
+    import traceback
+    traceback.print_exc()
+    SIONNA_AVAILABLE = False
+except Exception as e:
+    print(f"❌ CRITICAL: Unexpected error during Sionna import: {e}")
+    print(f"   Error type: {type(e).__name__}")
+    import traceback
+    traceback.print_exc()
     SIONNA_AVAILABLE = False
 
 CONFIG = {
@@ -21,7 +48,7 @@ CONFIG = {
     'scenes_dir': 'scenes',
     'results_dir': 'results',
     'use_sionna_rt': True,
-    'fallback_to_simple': True,
+    'fallback_to_simple': True,  # Set to False to force Sionna-only mode (will fail if Sionna unavailable)
     'tx_power_dbm': 20.0,
     'frequency_ghz': 5.0,
 }
@@ -111,12 +138,22 @@ class SionnaRayTracer:
         
     def load_scene(self):
         try:
-            self.scene = load_scene(self.scene_file)
+            # Ensure we have an absolute path
+            if self.scene_file is None:
+                raise ValueError("Scene file path is None")
+            
+            scene_path = os.path.abspath(self.scene_file)
+            if not os.path.exists(scene_path):
+                raise FileNotFoundError(f"Scene file does not exist: {scene_path}")
+            
+            self.scene = load_scene(scene_path)
             self.scene.frequency = self.frequency_hz
-            print(f"Loaded scene: {self.scene_file}")
+            print(f"Loaded scene: {scene_path}")
             return True
         except Exception as e:
             print(f"Error loading scene: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def setup_transmitter(self, position):
@@ -161,34 +198,67 @@ class SionnaRayTracer:
         print(f"Running ray tracing (max_depth={max_depth}, samples={num_samples:.0e})...")
         
         try:
-            paths = self.scene.compute_paths(
-                max_depth=max_depth,
-                num_samples=int(num_samples),
-                los=True,
-                reflection=True,
-                diffraction=True
-            )
+            # Try using PathSolver if compute_paths is not available on scene
+            try:
+                # First try the direct method if available
+                paths = self.scene.compute_paths(
+                    max_depth=max_depth,
+                    num_samples=int(num_samples),
+                    los=True,
+                    reflection=True,
+                    diffraction=True
+                )
+            except AttributeError:
+                # Fall back to PathSolver
+                solver = PathSolver()
+                paths = solver(self.scene)
             
-            a, tau = paths.cir()
+            a, tau = paths.cir(out_type="numpy")
+            
+            # a is a tuple of (real, imag) components
+            if isinstance(a, (tuple, list)) and len(a) == 2:
+                a_real, a_imag = a
+                # Convert to complex array
+                a_complex = a_real + 1j * a_imag
+            else:
+                a_complex = a
             
             rssi_values = []
-            num_rx = a.shape[1]
-            
-            for rx_idx in range(num_rx):
-                path_gains = a[0, rx_idx, 0, 0, 0, :]
-                channel_power = tf.reduce_sum(tf.abs(path_gains) ** 2)
-                
-                tx_power_dbm = 20.0
-                path_loss_db = -10 * tf.math.log(channel_power) / tf.math.log(10.0)
-                rssi = tx_power_dbm - path_loss_db.numpy()
-                
-                rssi_values.append(float(rssi))
+            # Handle different possible shapes: [num_rx, num_rx_ant, num_tx, num_tx_ant, num_paths, num_time_steps]
+            if len(a_complex.shape) == 6:
+                num_rx = a_complex.shape[0]
+                for rx_idx in range(num_rx):
+                    # Extract path gains for this receiver (assuming single TX, single antenna)
+                    path_gains = a_complex[rx_idx, 0, 0, 0, :, 0]  # [num_paths]
+                    channel_power = np.sum(np.abs(path_gains) ** 2)
+                    
+                    tx_power_dbm = 20.0
+                    if channel_power > 0:
+                        path_loss_db = -10 * np.log10(channel_power)
+                        rssi = tx_power_dbm - path_loss_db
+                    else:
+                        rssi = -100.0  # Very weak signal
+                    
+                    rssi_values.append(float(rssi))
+            else:
+                # Fallback: try to extract from whatever shape we have
+                print(f"Warning: Unexpected CIR shape {a_complex.shape}, attempting to extract RSSI...")
+                # Sum over all dimensions except the path dimension
+                channel_power = np.sum(np.abs(a_complex) ** 2)
+                if channel_power > 0:
+                    path_loss_db = -10 * np.log10(channel_power)
+                    rssi = 20.0 - path_loss_db
+                    rssi_values = [float(rssi)] * len(self.scene.receivers)
+                else:
+                    rssi_values = [-100.0] * len(self.scene.receivers)
             
             print(f"Ray tracing complete")
             return np.array(rssi_values)
             
         except Exception as e:
             print(f"Ray tracing failed: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
 class SimulationRunner:
@@ -220,6 +290,9 @@ class SimulationRunner:
             return [0.0, 0.0, 3.0]
     
     def estimate_rx_positions(self, building_data):
+        # TODO: Map 'Location' column from CSV to actual X/Y coordinates relative to the building floor plan.
+        # Current circular logic creates inaccurate error metrics. Need to map location names (e.g., "A310", 
+        # "Lobby", "Stairwell") to real-world coordinates within each building's geometry.
         locations = building_data['Location'].values
         positions = []
         
@@ -268,12 +341,14 @@ class SimulationRunner:
                 self.config['scenes_dir'],
                 f"{scene_name}.xml"
             )
+            scene_file = os.path.abspath(scene_file)
             
             if not os.path.exists(scene_file):
                 alt_scene_file = os.path.join(
                     self.config['scenes_dir'],
                     f"{building_name.lower().replace(' ', '_')}.xml"
                 )
+                alt_scene_file = os.path.abspath(alt_scene_file)
                 if os.path.exists(alt_scene_file):
                     scene_file = alt_scene_file
                 else:
@@ -292,27 +367,55 @@ class SimulationRunner:
                             method = "Sionna Ray Tracing"
                         
                 except Exception as e:
-                    print(f"Sionna ray tracing failed: {e}")
+                    print(f"❌ Sionna ray tracing failed: {e}")
+                    print(f"   Error type: {type(e).__name__}")
+                    import traceback
+                    traceback.print_exc()
             else:
                 print(f"Scene file not found: {scene_file}")
         
-        if simulated_rssi is None and self.config['fallback_to_simple']:
-            print("Using simplified propagation model")
-            model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
-            
-            simulated_rssi = []
-            for rx_pos in rx_positions:
-                distance = np.linalg.norm(rx_pos - ap_position)
-                num_walls = int(distance / 10)
-                rssi = model.calculate_rssi(distance, num_walls)
-                simulated_rssi.append(rssi)
-            
-            simulated_rssi = np.array(simulated_rssi)
-            method = "Simplified Model"
-        
         if simulated_rssi is None:
-            print("Simulation failed")
-            return None
+            if not SIONNA_AVAILABLE:
+                print("⚠ Sionna not available - cannot use ray tracing")
+                if self.config['fallback_to_simple']:
+                    print("Using simplified propagation model (fallback enabled)")
+                    model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
+                    
+                    simulated_rssi = []
+                    for rx_pos in rx_positions:
+                        distance = np.linalg.norm(rx_pos - ap_position)
+                        num_walls = int(distance / 10)
+                        rssi = model.calculate_rssi(distance, num_walls)
+                        simulated_rssi.append(rssi)
+                    
+                    simulated_rssi = np.array(simulated_rssi)
+                    method = "Simplified Model"
+                else:
+                    print("❌ Simulation failed: Sionna unavailable and fallback disabled")
+                    print("   To enable fallback, set CONFIG['fallback_to_simple'] = True")
+                    print("   Or install Sionna: pip install sionna")
+                    return None
+            elif not os.path.exists(scene_file):
+                print(f"⚠ Scene file not found: {scene_file}")
+                if self.config['fallback_to_simple']:
+                    print("Using simplified propagation model (fallback enabled)")
+                    model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
+                    
+                    simulated_rssi = []
+                    for rx_pos in rx_positions:
+                        distance = np.linalg.norm(rx_pos - ap_position)
+                        num_walls = int(distance / 10)
+                        rssi = model.calculate_rssi(distance, num_walls)
+                        simulated_rssi.append(rssi)
+                    
+                    simulated_rssi = np.array(simulated_rssi)
+                    method = "Simplified Model"
+                else:
+                    print("❌ Simulation failed: Scene file missing and fallback disabled")
+                    return None
+            else:
+                print("❌ Simulation failed: Unknown error")
+                return None
         
         print(f"Simulation complete using {method}")
         
@@ -671,6 +774,15 @@ class SimulationRunner:
 
 def main():
     VALID_BUILDINGS = {'Kiewit', 'Kauffman', 'Adele Coryell', 'Love Library South', 'Selleck', 'Brace'}
+    
+    # Print Sionna status
+    if not SIONNA_AVAILABLE:
+        print("⚠ WARNING: Sionna is not installed or failed to import")
+        print("   The simulation will use simplified propagation model")
+        print("   To install Sionna: pip install sionna")
+        print("   Note: Sionna requires TensorFlow and may have compatibility issues on macOS\n")
+    else:
+        print("✓ Sionna is available - ray tracing enabled\n")
     
     scenes_dir = CONFIG['scenes_dir']
     if not os.path.exists(scenes_dir) or len(os.listdir(scenes_dir)) == 0:

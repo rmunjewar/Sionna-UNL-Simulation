@@ -7,6 +7,7 @@ class BuildingSceneBuilder:
     def __init__(self, building_name):
         self.building_name = building_name
         self.objects = []
+        self.shape_counter = 0
         
     def add_floor(self, position, size, material='concrete'):
         obj = {'type': 'floor', 'position': position, 'size': size, 'material': material}
@@ -28,20 +29,36 @@ class BuildingSceneBuilder:
         obj = {'type': 'window', 'position': position, 'size': size, 'material': material}
         self.objects.append(obj)
         
-    def add_room(self, corner_position, dimensions, height, wall_material='drywall'):
+    def add_room(self, corner_position, dimensions, height, wall_material='drywall', door_width=1.0):
         x, y, z = corner_position
         length, width = dimensions
         wall_thick = 0.15
         
-        self.add_wall([x + length/2, y + width, z + height/2], [length, wall_thick, height], wall_material)
+        # Add walls with a door opening in one wall
+        # Front wall (positive Y) with door
+        wall_length = length
+        door_gap = door_width
+        if wall_length > door_gap:
+            # Split wall into two segments with door in middle
+            left_seg = (wall_length - door_gap) / 2
+            self.add_wall([x + left_seg/2, y + width, z + height/2], [left_seg, wall_thick, height], wall_material)
+            self.add_wall([x + length - left_seg/2, y + width, z + height/2], [left_seg, wall_thick, height], wall_material)
+            # Add door in the gap
+            self.add_door([x + length/2, y + width, z + height/2], [door_gap, wall_thick, height*0.8], 'wood')
+        else:
+            self.add_wall([x + length/2, y + width, z + height/2], [length, wall_thick, height], wall_material)
+        
+        # Back wall (negative Y)
         self.add_wall([x + length/2, y, z + height/2], [length, wall_thick, height], wall_material)
+        # Right wall (positive X)
         self.add_wall([x + length, y + width/2, z + height/2], [wall_thick, width, height], wall_material)
+        # Left wall (negative X)
         self.add_wall([x, y + width/2, z + height/2], [wall_thick, width, height], wall_material)
 
     def generate_xml(self, output_dir='scenes'):
         os.makedirs(output_dir, exist_ok=True)
         filename = os.path.join(output_dir, f'{self.building_name}.xml')
-        xml_content = self._build_header() + "".join([self._obj_to_xml(o) for o in self.objects]) + self._build_footer()
+        xml_content = self._build_header() + self._build_materials() + "".join([self._obj_to_xml(o) for o in self.objects]) + self._build_footer()
         with open(filename, 'w') as f:
             f.write(xml_content)
         print(f"o Generated: {filename}")
@@ -49,52 +66,66 @@ class BuildingSceneBuilder:
     
     def _build_header(self):
         return """<?xml version="1.0" encoding="utf-8"?>
-<scene version="0.6.0">
-    <sensor type="perspective">
-        <transform name="to_world">
-            <lookat origin="0, 0, 10" target="0, 0, 0" up="0, 1, 0"/>
-        </transform>
-        <float name="fov" value="45"/>
-    </sensor>
+<scene version="2.1.0">
+
 """
+    
+    def _build_materials(self):
+        """Build material definitions for all unique materials used"""
+        unique_materials = set(obj['material'] for obj in self.objects)
+        materials_xml = "<!-- Materials -->\n\n"
+        
+        for mat_name in sorted(unique_materials):
+            mat_id = f"mat-{mat_name}"
+            mat_def = self._get_mat_definition(mat_name, mat_id)
+            materials_xml += f"\t{mat_def}\n"
+        
+        materials_xml += "\n<!-- Shapes -->\n\n"
+        return materials_xml
     
     def _build_footer(self):
         return "</scene>"
     
     def _obj_to_xml(self, obj):
-        mat = self._get_mat(obj['material'])
+        mat_id = f"mat-{obj['material']}"
         pos, size = obj['position'], obj['size']
+        self.shape_counter += 1
+        shape_id = f"shape-{obj['type']}-{self.shape_counter}"
+        shape_name = f"{obj['type']}_{self.shape_counter}"
         
         if obj['type'] in ['floor', 'ceiling']:
-            return f"""
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="{pos[0]}" y="{pos[1]}" z="{pos[2]}"/>
-            <scale x="{size[0]/2}" y="{size[1]/2}" z="1"/>
-        </transform>
-        {mat}
-    </shape>"""
+            return f"""\t<shape type="rectangle" id="{shape_id}" name="{shape_name}">
+\t\t<transform name="to_world">
+\t\t\t<translate x="{pos[0]}" y="{pos[1]}" z="{pos[2]}"/>
+\t\t\t<scale x="{size[0]/2}" y="{size[1]/2}" z="1"/>
+\t\t</transform>
+\t\t<ref id="{mat_id}" name="bsdf"/>
+\t</shape>
+"""
         else: 
-            return f"""
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="{pos[0]}" y="{pos[1]}" z="{pos[2]}"/>
-            <rotate x="1" angle="90"/>
-            <scale x="{size[0]/2}" y="{size[2]/2}" z="1"/>
-        </transform>
-        {mat}
-    </shape>"""
+            return f"""\t<shape type="rectangle" id="{shape_id}" name="{shape_name}">
+\t\t<transform name="to_world">
+\t\t\t<translate x="{pos[0]}" y="{pos[1]}" z="{pos[2]}"/>
+\t\t\t<rotate x="1" angle="90"/>
+\t\t\t<scale x="{size[0]/2}" y="{size[2]/2}" z="1"/>
+\t\t</transform>
+\t\t<ref id="{mat_id}" name="bsdf"/>
+\t</shape>
+"""
 
-    def _get_mat(self, name):
+    def _get_mat_definition(self, name, mat_id):
+        """Get material definition with ID for Sionna"""
+        # Use Sionna-compatible ITU radio materials
         mats = {
-            'concrete': '<bsdf type="diffuse"><rgb name="reflectance" value="0.5, 0.5, 0.5"/></bsdf>',
-            'brick': '<bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>',
-            'drywall': '<bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>',
-            'glass': '<bsdf type="dielectric"><float name="int_ior" value="1.5"/></bsdf>',
-            'wood': '<bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.2"/></bsdf>',
-            'metal': '<bsdf type="conductor"><rgb name="specularReflectance" value="1, 1, 1"/></bsdf>'
+            'concrete': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>',
+            'brick': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="concrete"/><float name="thickness" value="0.2"/></bsdf>',
+            'drywall': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="plasterboard"/><float name="thickness" value="0.1"/></bsdf>',
+            'glass': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="glass"/><float name="thickness" value="0.01"/></bsdf>',
+            'wood': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="wood"/><float name="thickness" value="0.05"/></bsdf>',
+            'metal': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="metal"/><float name="thickness" value="0.1"/></bsdf>'
         }
-        return mats.get(name, mats['concrete'])
+        template = mats.get(name, mats['concrete'])
+        return template.format(mat_id)
 
 def ft_to_m(ft):
     return ft * 0.3048
@@ -163,8 +194,10 @@ def create_kiewit_scene(dims=None):
         L = ft_to_m(126.38) 
         W = ft_to_m(245.73)
     
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
     
     scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
     scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
@@ -186,8 +219,10 @@ def create_kauffman_scene(dims=None):
         L = ft_to_m(194.24)
         W = ft_to_m(201.42)
     
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
     
     # Exterior walls
     scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
@@ -214,8 +249,10 @@ def create_adele_coryell_scene(dims=None):
         W = ft_to_m(252.56)
     
     # Single floor library/learning commons
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'drywall')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
     
     # Exterior walls
     scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
@@ -244,8 +281,10 @@ def create_love_library_south_scene(dims=None):
         W = ft_to_m(151.56)
     
     # 3-floor library
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'concrete')
     
     # Exterior walls
     scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
@@ -276,8 +315,10 @@ def create_selleck_scene(dims=None):
         L = ft_to_m(388.06)
         W = ft_to_m(207.22)
     
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,4.0], [L, W, 0.1], 'drywall')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,4.0], [L + padding, W + padding, 0.1], 'drywall')
     
     scene.add_wall([0, W/2, 2.0], [L, 0.4, 4.0], 'brick')
     
@@ -292,8 +333,10 @@ def create_brace_scene(dims=None):
         L = ft_to_m(220.32)
         W = ft_to_m(123.03)
     
-    scene.add_floor([0,0,0], [L, W, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L, W, 0.1], 'concrete')
+    # Add padding to floor/ceiling to prevent geometry leaks at edges
+    padding = 1.0
+    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
+    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'concrete')
     
     scene.add_room([10, 5, 0], [12, 10], 3.5, 'brick')
     

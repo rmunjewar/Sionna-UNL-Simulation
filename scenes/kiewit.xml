@@ -1,95 +1,115 @@
 <?xml version="1.0" encoding="utf-8"?>
-<scene version="0.6.0">
-    <sensor type="perspective">
-        <transform name="to_world">
-            <lookat origin="0, 0, 10" target="0, 0, 0" up="0, 1, 0"/>
-        </transform>
-        <float name="fov" value="45"/>
-    </sensor>
+<scene version="2.1.0">
 
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="0" y="0" z="0"/>
-            <scale x="19.260312" y="37.449252" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.5, 0.5, 0.5"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="0" y="0" z="3.5"/>
-            <scale x="19.260312" y="37.449252" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="0" y="37.449252" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="19.260312" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="0" y="-37.449252" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="19.260312" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="19.260312" y="0" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="0.15" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="-19.260312" y="0" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="0.15" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.6, 0.4, 0.3"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="16.0" y="20" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="6.0" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="16.0" y="10" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="6.0" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="22" y="15.0" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="0.075" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="10" y="15.0" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="0.075" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.8, 0.8, 0.75"/></bsdf>
-    </shape>
-    <shape type="rectangle">
-        <transform name="to_world">
-            <translate x="0" y="0" z="1.75"/>
-            <rotate x="1" angle="90"/>
-            <scale x="0.5" y="1.75" z="1"/>
-        </transform>
-        <bsdf type="diffuse"><rgb name="reflectance" value="0.5, 0.5, 0.5"/></bsdf>
-    </shape></scene>
+<!-- Materials -->
+
+	<bsdf type="itu-radio-material" id="mat-brick"><string name="type" value="concrete"/><float name="thickness" value="0.2"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-concrete"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-drywall"><string name="type" value="plasterboard"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-wood"><string name="type" value="wood"/><float name="thickness" value="0.05"/></bsdf>
+
+<!-- Shapes -->
+
+	<shape type="rectangle" id="shape-floor-1" name="floor_1">
+		<transform name="to_world">
+			<translate x="0" y="0" z="0"/>
+			<scale x="19.760312" y="37.949252" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-ceiling-2" name="ceiling_2">
+		<transform name="to_world">
+			<translate x="0" y="0" z="3.5"/>
+			<scale x="19.760312" y="37.949252" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-3" name="wall_3">
+		<transform name="to_world">
+			<translate x="0" y="37.449252" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="19.260312" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-brick" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-4" name="wall_4">
+		<transform name="to_world">
+			<translate x="0" y="-37.449252" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="19.260312" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-brick" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-5" name="wall_5">
+		<transform name="to_world">
+			<translate x="19.260312" y="0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-brick" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-6" name="wall_6">
+		<transform name="to_world">
+			<translate x="-19.260312" y="0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-brick" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-7" name="wall_7">
+		<transform name="to_world">
+			<translate x="12.75" y="20" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="2.75" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-8" name="wall_8">
+		<transform name="to_world">
+			<translate x="19.25" y="20" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="2.75" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-door-9" name="door_9">
+		<transform name="to_world">
+			<translate x="16.0" y="20" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.5" y="1.4000000000000001" z="1"/>
+		</transform>
+		<ref id="mat-wood" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-10" name="wall_10">
+		<transform name="to_world">
+			<translate x="16.0" y="10" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="6.0" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-11" name="wall_11">
+		<transform name="to_world">
+			<translate x="22" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-12" name="wall_12">
+		<transform name="to_world">
+			<translate x="10" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-13" name="wall_13">
+		<transform name="to_world">
+			<translate x="0" y="0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.5" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+</scene>
