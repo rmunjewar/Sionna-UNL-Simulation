@@ -969,6 +969,7 @@ class SimulationRunner:
         
         fig, ax = plt.subplots(1, 1, figsize=(14, 12))
         
+        # Material color mapping
         material_colors = {
             'concrete': '#8B7355',
             'brick': '#A0522D',
@@ -989,11 +990,13 @@ class SimulationRunner:
             'metal': 0.8
         }
         
+        # Parse and draw building geometry
         geometry = None
         if scene_file and os.path.exists(scene_file):
             geometry, materials = parse_scene_xml(scene_file)
             
             if geometry:
+                # Draw floors (as background)
                 for floor in geometry['floors']:
                     pos = floor['position']
                     size = floor['size']
@@ -1009,6 +1012,7 @@ class SimulationRunner:
                     )
                     ax.add_patch(rect)
                 
+                # Draw walls
                 for wall in geometry['walls']:
                     pos = wall['position']
                     size = wall['size']
@@ -1025,6 +1029,7 @@ class SimulationRunner:
                     )
                     ax.add_patch(rect)
         
+        # Draw distance circles from AP
         for radius in [10, 20, 30]:
             circle = Circle(
                 (ap_position[0], ap_position[1]), radius,
@@ -1032,23 +1037,28 @@ class SimulationRunner:
                 linewidth=1, alpha=0.5, zorder=1
             )
             ax.add_patch(circle)
+            # Label the circle
             ax.text(ap_position[0] + radius, ap_position[1], f'{radius}m',
                    fontsize=8, color='gray', alpha=0.7, ha='left', va='center')
         
+        # Draw access point (red triangle)
         ax.scatter(ap_position[0], ap_position[1], s=500, marker='^', 
                   color='red', label='Access Point', zorder=5, 
                   edgecolors='black', linewidths=2)
         
+        # Draw receiver points with location labels
         for i, (pos, loc) in enumerate(zip(rx_positions, locations)):
             ax.scatter(pos[0], pos[1], s=200, marker='o', 
                       color='blue', edgecolors='black', linewidths=1.5, 
                       zorder=4, alpha=0.7)
+            # Label with location name
             ax.annotate(loc, (pos[0], pos[1]), 
                        xytext=(5, 5), textcoords='offset points',
                        fontsize=9, bbox=dict(boxstyle='round,pad=0.3', 
                                             facecolor='white', alpha=0.8),
                        zorder=6)
         
+        # Add material legend
         if geometry:
             from matplotlib.patches import Patch
             legend_elements = [
@@ -1087,6 +1097,7 @@ class SimulationRunner:
         
         fig, ax = plt.subplots(1, 1, figsize=(14, 12))
         
+        # Material color mapping
         material_colors = {
             'concrete': '#8B7355',  # Brown-gray
             'brick': '#A0522D',     # Sienna
@@ -1107,11 +1118,13 @@ class SimulationRunner:
             'metal': 0.8
         }
         
+        # Parse and draw building geometry
         geometry = None
         if scene_file and os.path.exists(scene_file):
             geometry, materials = parse_scene_xml(scene_file)
             
             if geometry:
+                # Draw floors (as background)
                 for floor in geometry['floors']:
                     pos = floor['position']
                     size = floor['size']
@@ -1127,6 +1140,7 @@ class SimulationRunner:
                     )
                     ax.add_patch(rect)
                 
+                # Draw walls
                 for wall in geometry['walls']:
                     pos = wall['position']
                     size = wall['size']
@@ -1134,6 +1148,9 @@ class SimulationRunner:
                     color = material_colors.get(mat, '#A0522D')
                     alpha = material_alphas.get(mat, 0.8)
                     
+                    # For top-down 2D view: size[0] = length, size[1] = thickness
+                    # Walls are drawn as rectangles with their length and thickness
+                    # Use minimum thickness of 0.3m for visibility if too thin
                     wall_thickness = max(size[1], 0.3)
                     
                     rect = Rectangle(
@@ -1144,6 +1161,7 @@ class SimulationRunner:
                     )
                     ax.add_patch(rect)
                 
+                # Draw doors
                 for door in geometry['doors']:
                     pos = door['position']
                     size = door['size']
@@ -1166,6 +1184,7 @@ class SimulationRunner:
                         )
                     ax.add_patch(rect)
                 
+                # Draw windows
                 for window in geometry['windows']:
                     pos = window['position']
                     size = window['size']
@@ -1188,6 +1207,7 @@ class SimulationRunner:
                         )
                     ax.add_patch(rect)
                 
+                # Draw obstacles (columns, etc.)
                 for obstacle in geometry['obstacles']:
                     pos = obstacle['position']
                     size = obstacle['size']
@@ -1202,24 +1222,33 @@ class SimulationRunner:
                     )
                     ax.add_patch(rect)
         
+        # Draw ray paths if available
         if paths is not None and tracer is not None:
             try:
+                # Try to extract ray paths from paths object
+                # This is a simplified visualization - showing strongest paths
                 tx_pos = ap_position
                 rx_positions_from_scene = tracer.get_receiver_positions()
                 
                 if rx_positions_from_scene is not None and len(rx_positions_from_scene) > 0:
+                    # Draw ray paths (simplified - direct paths for now)
+                    # In a full implementation, you'd extract actual reflection/diffraction paths
                     for rx_idx, rx_pos in enumerate(rx_positions_from_scene):
                         if len(rx_pos) >= 2:
+                            # Draw direct path
                             ax.plot([tx_pos[0], rx_pos[0]], 
                                    [tx_pos[1], rx_pos[1]], 
                                    'b-', alpha=0.2, linewidth=0.5, zorder=1)
             except Exception as e:
+                # Silently fail if ray path extraction doesn't work
                 pass
         
+        # Draw receiver grid from Sionna scene
         if tracer is not None and tracer.scene is not None:
             try:
                 rx_grid_positions = tracer.get_receiver_positions()
                 if rx_grid_positions is not None and len(rx_grid_positions) > 0:
+                    # Draw receiver grid points
                     ax.scatter(rx_grid_positions[:, 0], rx_grid_positions[:, 1], 
                              s=50, marker='o', color='cyan', alpha=0.4,
                              edgecolors='blue', linewidths=0.5, zorder=3,
@@ -1227,18 +1256,24 @@ class SimulationRunner:
             except Exception as e:
                 pass
         
+        # Draw access point
         ax.scatter(ap_position[0], ap_position[1], s=500, marker='^', 
                   color='red', label='Access Point', zorder=5, edgecolors='black', linewidths=2)
         
+        # Draw measurement points with RSSI coloring
+        # Handle mismatch between number of measurements and number of locations
         scatter = None
         
         if len(rx_positions) == 1 and len(measured_rssi) > 1:
+            # Case: Multiple measurements at ONE location (e.g., Kiewit)
+            # We plot the single point colored by the AVERAGE RSSI
             mean_rssi = np.mean(measured_rssi)
             scatter = ax.scatter(rx_positions[:, 0], rx_positions[:, 1], 
                                c=np.array([mean_rssi]), s=200, cmap='RdYlGn_r', 
                                edgecolors='black', linewidths=1.5, zorder=4,
                                label='Measurement Point (Avg)')
             
+            # Annotate with range
             range_str = f"{min(measured_rssi):.0f}-{max(measured_rssi):.0f}"
             ax.annotate(f'Avg: {mean_rssi:.0f} dBm\nRange: {range_str}', 
                        (rx_positions[0][0], rx_positions[0][1]), 
@@ -1246,6 +1281,7 @@ class SimulationRunner:
                        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8), zorder=6)
                        
         elif len(rx_positions) == len(measured_rssi):
+            # Case: 1-to-1 mapping
             scatter = ax.scatter(rx_positions[:, 0], rx_positions[:, 1], 
                                c=measured_rssi, s=200, cmap='RdYlGn_r', 
                                edgecolors='black', linewidths=1.5, zorder=4,
@@ -1255,20 +1291,25 @@ class SimulationRunner:
                            textcoords='offset points', fontsize=8, 
                            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8), zorder=6)
         else:
+            # Fallback for other mismatches
             print(f"⚠ Warning: Plotting mismatch. Locations: {len(rx_positions)}, Measurements: {len(measured_rssi)}")
+            # Just plot locations in blue
             ax.scatter(rx_positions[:, 0], rx_positions[:, 1], color='blue', s=200, zorder=4,
                       label='Measurement Points', edgecolors='black', linewidths=1.5)
         
+        # Draw simple lines from AP to measurement points (if not showing ray paths)
         if paths is None:
             for rx_pos in rx_positions:
                 ax.plot([ap_position[0], rx_pos[0]], 
                        [ap_position[1], rx_pos[1]], 
                        'k--', alpha=0.2, linewidth=0.5, zorder=1)
         
+        # Add colorbar only if we actually created a scatter plot with colors
         if scatter is not None:
             cbar = plt.colorbar(scatter, ax=ax)
             cbar.set_label('Measured RSSI (dBm)', fontsize=12)
         
+        # Add material legend if geometry was drawn
         if geometry:
             from matplotlib.patches import Patch
             legend_elements = [
@@ -1285,6 +1326,7 @@ class SimulationRunner:
         ax.set_title(f'{building} - Scene Layout with Building Geometry, Materials, Receiver Grid, and Ray Paths', 
                     fontsize=14, fontweight='bold')
         
+        # Add main legend
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         ax.legend(by_label.values(), by_label.keys(), loc='upper right', fontsize=9)
@@ -1531,6 +1573,7 @@ def main():
         'Oldfather', 'Memorial Stadium'
     }
     
+    # Print Sionna status
     if not SIONNA_AVAILABLE:
         print("⚠ WARNING: Sionna is not installed or failed to import")
         print("   The simulation will use simplified propagation model")
@@ -1545,6 +1588,7 @@ def main():
     
     data = load_measurement_data(CONFIG['data_file'])
     
+    # Filter to valid buildings only
     data = data[data['Hall'].isin(VALID_BUILDINGS)]
     
     runner = SimulationRunner(data, CONFIG)
