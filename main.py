@@ -61,7 +61,7 @@ CONFIG = {
     # to compensate for simplified building geometry (missing furniture, people, equipment)
     # and other unmodeled losses. Adjusted based on calibration with measured data.
     # Value of -5 dBm accounts for ~25 dB of unmodeled losses (furniture, people, multi-floor effects)
-    'tx_power_dbm': -5.0,  # Effective TX power (calibrated from measurements)
+    'tx_power_dbm': 17.0,  # Effective TX power (calibrated from measurements)
     'frequency_ghz': 5.0,
     # Auto-calibration: Adjust each building's simulation to match mean measured RSSI
     # This compensates for building-specific geometry quality differences

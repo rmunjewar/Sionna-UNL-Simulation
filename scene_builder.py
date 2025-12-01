@@ -177,10 +177,10 @@ def create_kiewit_scene():
     
     # Exterior walls (metal frame with glass)
     wall_thick = 0.3
-    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'metal')
-    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'metal')
-    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'metal')
-    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'metal')
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
     
     # Large windows (glass walls)
     scene.add_window([0, W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')

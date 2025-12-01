@@ -6,7 +6,6 @@
 	<bsdf type="itu-radio-material" id="mat-concrete"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>
 	<bsdf type="itu-radio-material" id="mat-drywall"><string name="type" value="plasterboard"/><float name="thickness" value="0.1"/></bsdf>
 	<bsdf type="itu-radio-material" id="mat-glass"><string name="type" value="glass"/><float name="thickness" value="0.01"/></bsdf>
-	<bsdf type="itu-radio-material" id="mat-metal"><string name="type" value="metal"/><float name="thickness" value="0.1"/></bsdf>
 	<bsdf type="itu-radio-material" id="mat-wood"><string name="type" value="wood"/><float name="thickness" value="0.05"/></bsdf>
 
 <!-- Shapes -->
@@ -31,7 +30,7 @@
 			<rotate x="1" angle="90"/>
 			<scale x="37.629084" y="1.75" z="1"/>
 		</transform>
-		<ref id="mat-metal" name="bsdf"/>
+		<ref id="mat-concrete" name="bsdf"/>
 	</shape>
 	<shape type="rectangle" id="shape-wall-4" name="wall_4">
 		<transform name="to_world">
@@ -39,7 +38,7 @@
 			<rotate x="1" angle="90"/>
 			<scale x="37.629084" y="1.75" z="1"/>
 		</transform>
-		<ref id="mat-metal" name="bsdf"/>
+		<ref id="mat-concrete" name="bsdf"/>
 	</shape>
 	<shape type="rectangle" id="shape-wall-5" name="wall_5">
 		<transform name="to_world">
@@ -47,7 +46,7 @@
 			<rotate x="1" angle="90"/>
 			<scale x="0.15" y="1.75" z="1"/>
 		</transform>
-		<ref id="mat-metal" name="bsdf"/>
+		<ref id="mat-concrete" name="bsdf"/>
 	</shape>
 	<shape type="rectangle" id="shape-wall-6" name="wall_6">
 		<transform name="to_world">
@@ -55,7 +54,7 @@
 			<rotate x="1" angle="90"/>
 			<scale x="0.15" y="1.75" z="1"/>
 		</transform>
-		<ref id="mat-metal" name="bsdf"/>
+		<ref id="mat-concrete" name="bsdf"/>
 	</shape>
 	<shape type="rectangle" id="shape-window-7" name="window_7">
 		<transform name="to_world">
