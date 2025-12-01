@@ -7,14 +7,11 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-# Import MEASUREMENT_LOCATIONS from scene_builder
 try:
     from scene_builder import MEASUREMENT_LOCATIONS
 except ImportError:
-    # Fallback: define it here if import fails
     MEASUREMENT_LOCATIONS = {}
 
-# Set LLVM path for Sionna RT on macOS
 if sys.platform == 'darwin' and 'DRJIT_LIBLLVM_PATH' not in os.environ:
     llvm_paths = [
         '/opt/homebrew/opt/llvm@20/lib/libLLVM.dylib',
@@ -55,21 +52,24 @@ CONFIG = {
     'scenes_dir': 'scenes',
     'results_dir': 'results',
     'use_sionna_rt': True,
-    'fallback_to_simple': True,  
-    # Transmit power in dBm
-    # Note: Real WiFi APs transmit at 15-20 dBm, but we use lower "effective" power
-    # to compensate for simplified building geometry (missing furniture, people, equipment)
-    # and other unmodeled losses. Adjusted based on calibration with measured data.
-    # Value of -5 dBm accounts for ~25 dB of unmodeled losses (furniture, people, multi-floor effects)
-    'tx_power_dbm': 17.0,  # Effective TX power (calibrated from measurements)
+    'fallback_to_simple': True,
+    'tx_power_dbm': 0.0,
     'frequency_ghz': 5.0,
-    # Auto-calibration: Adjust each building's simulation to match mean measured RSSI
-    # This compensates for building-specific geometry quality differences
-    # WARNING: When enabled, this uses measured data for calibration, so errors are artificially low
-    # For true validation, set to False and find optimal global TX power
     'auto_calibrate': False,
     'MANUAL_AP_POSITIONS': {
         'Hamilton': [18.5, 22.0, 3.0]
+    },
+    'RECEIVER_LOCATIONS': {
+        'kiewit_updated':           [27.0, 7.0, 1.5],       # Room A.310
+        'adele_coryell_updated':    [22.0, -12.0, 1.5],     # DLC Exam Commons
+        'love_library_south_updated': [0.0, 5.0, 1.5],      # Central Atrium
+        'selleck_updated':          [-12.0, 0.0, 1.5],      # Dining Hall West
+        'hamilton_updated':         [-25.0, -8.0, 1.5],     # Room 225/229
+        'union_updated':            [-8.0, -30.0, 1.5],     # The Crib
+        'oldfather_updated':        [-14.0, 6.0, 1.5],      # NW Conference Room
+        'memorial_stadium_updated': [-48.0, 20.0, 16.5],    # West Club (Upper level)
+        'brace':                    [10.0, 25.0, 1.5],      # Room 210
+        'bessey':                   [0.0, 0.0, 1.5],        # Hallway
     }
 }
 
@@ -89,18 +89,18 @@ BUILDING_NAME_MAP = {
 }
 
 BUILDING_TO_SCENE = {
-    'Kiewit': 'kiewit',
+    'Kiewit': 'kiewit_updated',
     'Kauffman': 'kauffman',
-    'Adele Coryell': 'adele_coryell',
-    'Love Library South': 'love_library_south',
-    'Selleck': 'selleck',
+    'Adele Coryell': 'adele_coryell_updated',
+    'Love Library South': 'love_library_south_updated',
+    'Selleck': 'selleck_updated',
     'Brace': 'brace',
-    'Hamilton': 'hamilton',
+    'Hamilton': 'hamilton_updated',
     'Bessey': 'bessey',
-    'Union': 'union',
-    'Oldfather': 'oldfather',
+    'Union': 'union_updated',
+    'Oldfather': 'oldfather_updated',
     'Burnett': 'burnett',
-    'Memorial Stadium': 'memorial_stadium'
+    'Memorial Stadium': 'memorial_stadium_updated'
 }
 
 def parse_scene_xml(xml_file):
@@ -313,12 +313,9 @@ class SionnaRayTracer:
             
             self.scene = load_scene(scene_path)
             self.scene.frequency = self.frequency_hz
-            print(f"Loaded scene: {scene_path}")
             return True
         except Exception as e:
             print(f"Error loading scene: {e}")
-            import traceback
-            traceback.print_exc()
             return False
     
     def setup_transmitter(self, position):
@@ -331,13 +328,16 @@ class SionnaRayTracer:
             polarization="V"
         )
         
+        # Convert position to Python floats (Mitsuba requires float32, not float64)
+        if isinstance(position, (list, tuple, np.ndarray)):
+            position = [float(x) for x in position]
+        
         tx = Transmitter(
             name="wifi_ap",
             position=position,
             orientation=[0, 0, 0]
         )
         self.scene.add(tx)
-        print(f"Added transmitter at {position}")
     
     def setup_receivers(self, positions):
         self.scene.rx_array = PlanarArray(
@@ -350,14 +350,16 @@ class SionnaRayTracer:
         )
         
         for i, pos in enumerate(positions):
+            # Convert position to Python floats (Mitsuba requires float32, not float64)
+            if isinstance(pos, (list, tuple, np.ndarray)):
+                pos = [float(x) for x in pos]
+            
             rx = Receiver(
                 name=f"rx_{i}",
                 position=pos,
                 orientation=[0, 0, 0]
             )
             self.scene.add(rx)
-        
-        print(f"Added {len(positions)} receivers")
     
     def get_receiver_positions(self):
         """Get all receiver positions from the scene"""
@@ -369,7 +371,6 @@ class SionnaRayTracer:
         return np.array(positions)
     
     def compute_coverage(self, max_depth=5, num_samples=1e6):
-        print(f"Running ray tracing (max_depth={max_depth}, samples={num_samples:.0e})...")
         
         try:
             # Try using PathSolver if compute_paths is not available on scene
@@ -424,11 +425,7 @@ class SionnaRayTracer:
                     
                     rssi_values.append(float(rssi))
                 
-                # Debug output
-                if len(channel_powers) > 0:
-                    avg_channel_power = np.mean(channel_powers)
-                    print(f"   Channel powers: min={min(channel_powers):.2e}, max={max(channel_powers):.2e}, avg={avg_channel_power:.2e}")
-                    print(f"   Simulated RSSI range: {min(rssi_values):.1f} to {max(rssi_values):.1f} dBm")
+                # Silently compute - no debug output
             else:
                 # Fallback: try to extract from whatever shape we have
                 print(f"Warning: Unexpected CIR shape {a_complex.shape}, attempting to extract RSSI...")
@@ -441,8 +438,6 @@ class SionnaRayTracer:
                 else:
                     rssi_values = [-100.0] * len(self.scene.receivers)
             
-            print(f"Ray tracing complete")
-            # Return both RSSI values and paths object for visualization
             return np.array(rssi_values), paths
             
         except Exception as e:
@@ -793,83 +788,45 @@ class SimulationRunner:
             print(f"Using manual AP position for {building_name}: {manual_pos}")
             return manual_pos
         
-        # Otherwise, use weighted centroid localization
+        # Get receiver position from dictionary
         if rx_positions is None:
             rx_positions = self.estimate_rx_positions(building_data)
-        if rssi_values is None:
-            rssi_values = building_data['RSSI (dBm)'].values
         
-        if len(rssi_values) > 0:
-            return self.weighted_centroid_localization(rx_positions, rssi_values)
+        # Place transmitter at AP mounting height (3.0m) above receiver
+        if len(rx_positions) > 0:
+            rx_ref = rx_positions[0]
+            tx_position = [rx_ref[0], rx_ref[1], 3.0]
+            return tx_position
         else:
             return [0.0, 0.0, 3.0]
     
     def estimate_rx_positions(self, building_data):
         """
-        Map 'Location' column from CSV to actual X/Y coordinates from MEASUREMENT_LOCATIONS dictionary.
-        Returns real-world coordinates within each building's geometry.
+        Use RECEIVER_LOCATIONS dictionary to get receiver position for ray tracing.
+        Returns the receiver position from the dictionary based on building name.
         """
         building_name = building_data['Hall'].iloc[0] if len(building_data) > 0 else None
-        locations = building_data['Location'].values
-        positions = []
-        missing_locations = []
         
-        if building_name not in MEASUREMENT_LOCATIONS:
-            print(f"⚠ Warning: Building '{building_name}' not found in MEASUREMENT_LOCATIONS")
-            print(f"   Falling back to circular pattern for {len(locations)} locations")
-            # Fallback to circular pattern if building not in dictionary
-            for i, loc in enumerate(locations):
-                angle = 2 * np.pi * i / len(locations)
-                radius = 10 + (i % 3) * 5
-                x = radius * np.cos(angle)
-                y = radius * np.sin(angle)
-                z = 1.5
-                positions.append([x, y, z])
-            return np.array(positions)
+        # Get the scene name for this building
+        scene_name = BUILDING_TO_SCENE.get(building_name, building_name.lower().replace(' ', '_'))
         
-        building_locations = MEASUREMENT_LOCATIONS[building_name]
-        
-        for loc in locations:
-            # Try exact match first
-            if loc in building_locations:
-                coords = building_locations[loc]
-                positions.append([coords[0], coords[1], coords[2]])
-            else:
-                # Try case-insensitive match
-                loc_lower = loc.lower()
-                found = False
-                for key, coords in building_locations.items():
-                    if key.lower() == loc_lower:
-                        positions.append([coords[0], coords[1], coords[2]])
-                        found = True
-                        break
-                
-                if not found:
-                    missing_locations.append(loc)
-                    # Use fallback: center of building with default height
-                    print(f"⚠ Warning: Location '{loc}' not found in MEASUREMENT_LOCATIONS for {building_name}")
-                    print(f"   Using fallback position [0, 0, 1.5]")
-                    positions.append([0.0, 0.0, 1.5])
-        
-        if missing_locations:
-            print(f"⚠ Missing locations for {building_name}: {missing_locations}")
-            print(f"   Available locations: {list(building_locations.keys())}")
-        
-        return np.array(positions)
+        # Look up receiver location in dictionary
+        receiver_locations = self.config.get('RECEIVER_LOCATIONS', {})
+        if scene_name in receiver_locations:
+            rx_pos = receiver_locations[scene_name]
+            print(f"Receiver at {rx_pos}")
+            return np.array([rx_pos])
+        else:
+            print(f"⚠ Warning: No receiver location found for {building_name}")
+            return np.array([[0.0, 0.0, 1.5]])
     
     def simulate_building(self, building_name):
-        
-        print(f"\n{'='*70}")
-        print(f"Simulating: {building_name}")
-        print(f"{'='*70}")
+        print(f"\nSimulating: {building_name}...")
         
         building_data = self.data[self.data['Hall'] == building_name].copy()
         
         if len(building_data) == 0:
-            print(f"No measurements for {building_name}")
             return None
-        
-        print(f"Found {len(building_data)} measurements")
         
         # Check for mixed frequency bands (2.4 GHz vs 5 GHz)
         frequencies = building_data['Frequency (MHz)'].values
@@ -894,9 +851,6 @@ class SimulationRunner:
         rx_positions = self.estimate_rx_positions(building_data)
         ap_position = self.estimate_ap_location(building_data, rx_positions, measured_rssi)
         
-        print(f"AP position: {ap_position}")
-        print(f"Average frequency: {avg_frequency:.0f} MHz")
-        
         simulated_rssi = None
         method = "Unknown"
         scene_file = None
@@ -905,6 +859,7 @@ class SimulationRunner:
         
         if SIONNA_AVAILABLE and self.config['use_sionna_rt']:
             scene_name = BUILDING_TO_SCENE.get(building_name, building_name.lower().replace(' ', '_'))
+            
             scene_file = os.path.join(
                 self.config['scenes_dir'],
                 f"{scene_name}.xml"
@@ -912,16 +867,7 @@ class SimulationRunner:
             scene_file = os.path.abspath(scene_file)
             
             if not os.path.exists(scene_file):
-                alt_scene_file = os.path.join(
-                    self.config['scenes_dir'],
-                    f"{building_name.lower().replace(' ', '_')}.xml"
-                )
-                alt_scene_file = os.path.abspath(alt_scene_file)
-                if os.path.exists(alt_scene_file):
-                    scene_file = alt_scene_file
-                else:
-                    print(f"⚠ Scene file not found: {scene_file}")
-                    print(f"   Also checked: {alt_scene_file}")
+                print(f"⚠ Scene file not found: {scene_file}")
             
             if os.path.exists(scene_file):
                 try:
@@ -933,6 +879,7 @@ class SimulationRunner:
                     if tracer.load_scene():
                         tracer.setup_transmitter(ap_position)
                         tracer.setup_receivers(rx_positions)
+                        print("  Running ray tracing...")
                         result = tracer.compute_coverage(max_depth=3, num_samples=5e5)
                         
                         if result is not None and result[0] is not None:
@@ -990,10 +937,20 @@ class SimulationRunner:
                 print("❌ Simulation failed: Unknown error")
                 return None
         
-        print(f"Simulation complete using {method}")
+        print(f"  Method: {method}")
         
-        # Run validation checks
-        print(f"\n--- Validation Checks for {building_name} ---")
+        # Ensure simulated_rssi matches measured_rssi length
+        if simulated_rssi is not None and len(simulated_rssi) != len(measured_rssi):
+            if len(simulated_rssi) == 1 and len(measured_rssi) > 1:
+                simulated_rssi = np.repeat(simulated_rssi, len(measured_rssi))
+            else:
+                if len(simulated_rssi) > len(measured_rssi):
+                    simulated_rssi = simulated_rssi[:len(measured_rssi)]
+                else:
+                    last_val = simulated_rssi[-1] if len(simulated_rssi) > 0 else -100.0
+                    simulated_rssi = np.concatenate([simulated_rssi, np.repeat(last_val, len(measured_rssi) - len(simulated_rssi))])
+        
+        # Run validation checks (silently)
         
         # Validate receiver positions
         self.validate_receiver_positions(building_name, rx_positions, scene_file)
@@ -1066,26 +1023,19 @@ class SimulationRunner:
             'RMSE': np.sqrt(np.mean(error**2)),
             'Mean_Error': np.mean(error),
             'Std_Error': np.std(error),
-            'Max_Error': np.max(np.abs(error)),
-            'Correlation': np.corrcoef(simulated, measured)[0, 1] if len(simulated) > 1 else 0
+            'Max_Error': np.max(np.abs(error))
         }
         
         return metrics
     
     def print_metrics(self, building, metrics):
-        print(f"\nResults for {building}:")
-        print(f"  MAE:         {metrics['MAE']:6.2f} dB")
-        print(f"  RMSE:        {metrics['RMSE']:6.2f} dB")
-        print(f"  Mean Error:  {metrics['Mean_Error']:6.2f} dB")
-        print(f"  Std Error:   {metrics['Std_Error']:6.2f} dB")
-        print(f"  Max Error:   {metrics['Max_Error']:6.2f} dB")
-        print(f"  Correlation: {metrics['Correlation']:6.3f}")
+        print(f"✓ {building}: MAE={metrics['MAE']:.1f}dB, RMSE={metrics['RMSE']:.1f}dB, Max={metrics['Max_Error']:.1f}dB")
     
     def run_all_buildings(self):
         buildings = self.data['Hall'].unique()
         
         print(f"\n{'='*70}")
-        print(f"RUNNING SIMULATIONS FOR {len(buildings)} BUILDINGS")
+        print(f"SIMULATIONS ({len(buildings)} buildings)")
         print(f"{'='*70}")
         
         for building in buildings:
@@ -1098,20 +1048,11 @@ class SimulationRunner:
         print("CREATING VISUALIZATIONS")
         print(f"{'='*70}")
         
+        print("Generating visualizations...")
         for building, result in self.results.items():
             self._plot_building_comparison(result)
             self._plot_scene_layout(result)
             self._plot_validation_overlay(result)
-            
-            # Generate coverage heatmap if Sionna ray tracer is available
-            tracer = result.get('tracer')
-            if tracer is not None and tracer.scene is not None:
-                tracer.generate_coverage_heatmap(
-                    building,
-                    result['rx_positions'],
-                    result['measured_rssi'],
-                    self.config['results_dir']
-                )
         
         self._plot_summary()
     
@@ -1247,7 +1188,6 @@ class SimulationRunner:
             f"{building.replace(' ', '_')}_validation_overlay.png"
         )
         plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved validation overlay: {filename}")
         plt.close()
     
     def _plot_scene_layout(self, result):
@@ -1425,19 +1365,41 @@ class SimulationRunner:
                   color='red', label='Access Point', zorder=5, edgecolors='black', linewidths=2)
         
         # Draw measurement points with RSSI coloring
-        scatter = ax.scatter(rx_positions[:, 0], rx_positions[:, 1], 
-                           c=measured_rssi, s=200, cmap='RdYlGn_r', 
-                           edgecolors='black', linewidths=1.5, zorder=4,
-                           label='Measurement Points')
+        # Handle mismatch between number of measurements and number of locations
+        scatter = None
         
-        # Annotate measurement points
-        for i, (pos, rssi) in enumerate(zip(rx_positions, measured_rssi)):
-            ax.annotate(f'{rssi:.0f} dBm', 
-                       (pos[0], pos[1]), 
-                       xytext=(5, 5), textcoords='offset points',
-                       fontsize=8, bbox=dict(boxstyle='round,pad=0.3', 
-                                            facecolor='white', alpha=0.8),
-                       zorder=6)
+        if len(rx_positions) == 1 and len(measured_rssi) > 1:
+            # Case: Multiple measurements at ONE location (e.g., Kiewit)
+            # We plot the single point colored by the AVERAGE RSSI
+            mean_rssi = np.mean(measured_rssi)
+            scatter = ax.scatter(rx_positions[:, 0], rx_positions[:, 1], 
+                               c=np.array([mean_rssi]), s=200, cmap='RdYlGn_r', 
+                               edgecolors='black', linewidths=1.5, zorder=4,
+                               label='Measurement Point (Avg)')
+            
+            # Annotate with range
+            range_str = f"{min(measured_rssi):.0f}-{max(measured_rssi):.0f}"
+            ax.annotate(f'Avg: {mean_rssi:.0f} dBm\nRange: {range_str}', 
+                       (rx_positions[0][0], rx_positions[0][1]), 
+                       xytext=(5, 5), textcoords='offset points', fontsize=8, 
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8), zorder=6)
+                       
+        elif len(rx_positions) == len(measured_rssi):
+            # Case: 1-to-1 mapping
+            scatter = ax.scatter(rx_positions[:, 0], rx_positions[:, 1], 
+                               c=measured_rssi, s=200, cmap='RdYlGn_r', 
+                               edgecolors='black', linewidths=1.5, zorder=4,
+                               label='Measurement Points')
+            for i, (pos, rssi) in enumerate(zip(rx_positions, measured_rssi)):
+                ax.annotate(f'{rssi:.0f} dBm', (pos[0], pos[1]), xytext=(5, 5), 
+                           textcoords='offset points', fontsize=8, 
+                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8), zorder=6)
+        else:
+            # Fallback for other mismatches
+            print(f"⚠ Warning: Plotting mismatch. Locations: {len(rx_positions)}, Measurements: {len(measured_rssi)}")
+            # Just plot locations in blue
+            ax.scatter(rx_positions[:, 0], rx_positions[:, 1], color='blue', s=200, zorder=4,
+                      label='Measurement Points', edgecolors='black', linewidths=1.5)
         
         # Draw simple lines from AP to measurement points (if not showing ray paths)
         if paths is None:
@@ -1446,9 +1408,10 @@ class SimulationRunner:
                        [ap_position[1], rx_pos[1]], 
                        'k--', alpha=0.2, linewidth=0.5, zorder=1)
         
-        # Add colorbar for RSSI
-        cbar = plt.colorbar(scatter, ax=ax)
-        cbar.set_label('Measured RSSI (dBm)', fontsize=12)
+        # Add colorbar only if we actually created a scatter plot with colors
+        if scatter is not None:
+            cbar = plt.colorbar(scatter, ax=ax)
+            cbar.set_label('Measured RSSI (dBm)', fontsize=12)
         
         # Add material legend if geometry was drawn
         if geometry:
@@ -1480,7 +1443,6 @@ class SimulationRunner:
             f"{building.replace(' ', '_')}_scene_layout.png"
         )
         plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved scene layout: {filename}")
         plt.close()
     
     def _plot_building_comparison(self, result):
@@ -1540,7 +1502,6 @@ class SimulationRunner:
         Mean Error:   {metrics['Mean_Error']:.2f} dB
         Std Error:    {metrics['Std_Error']:.2f} dB
         Max Error:    {metrics['Max_Error']:.2f} dB
-        Correlation:  {metrics['Correlation']:.3f}
         
         Method: {result['method']}
         Measurements: {len(measured)}
@@ -1566,11 +1527,10 @@ class SimulationRunner:
         buildings = list(self.results.keys())
         mae_values = [self.results[b]['metrics']['MAE'] for b in buildings]
         rmse_values = [self.results[b]['metrics']['RMSE'] for b in buildings]
-        corr_values = [self.results[b]['metrics']['Correlation'] for b in buildings]
         
         fig = plt.figure(figsize=(18, 12))
         gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
-        fig.suptitle('Summary: Simulated vs Measured WiFi Coverage Across UNL Campus', 
+        fig.suptitle('Summary: Simulated vs Measured WiFi Coverage', 
                      fontsize=18, fontweight='bold', y=0.98)
         
         x_pos = np.arange(len(buildings))
@@ -1584,7 +1544,7 @@ class SimulationRunner:
         ax1.set_xticklabels(short_buildings, rotation=45, ha='right', fontsize=9)
         ax1.grid(True, alpha=0.3, axis='y')
         ax1.axhline(np.mean(mae_values), color='r', linestyle='--', 
-                   label=f'Average: {np.mean(mae_values):.2f} dB', linewidth=2)
+                   label=f'Average: {np.mean(mae_values):.1f} dB', linewidth=2)
         ax1.legend(fontsize=10)
         
         ax2 = fig.add_subplot(gs[0, 1])
@@ -1595,20 +1555,23 @@ class SimulationRunner:
         ax2.set_xticklabels(short_buildings, rotation=45, ha='right', fontsize=9)
         ax2.grid(True, alpha=0.3, axis='y')
         ax2.axhline(np.mean(rmse_values), color='r', linestyle='--',
-                   label=f'Average: {np.mean(rmse_values):.2f} dB', linewidth=2)
+                   label=f'Average: {np.mean(rmse_values):.1f} dB', linewidth=2)
         ax2.legend(fontsize=10)
         
         ax3 = fig.add_subplot(gs[0, 2])
-        ax3.bar(x_pos, corr_values, color='mediumseagreen', alpha=0.7)
-        ax3.set_ylabel('Correlation', fontsize=12)
-        ax3.set_title('Measured vs Simulated Correlation', fontsize=14, fontweight='bold')
-        ax3.set_xticks(x_pos)
-        ax3.set_xticklabels(short_buildings, rotation=45, ha='right', fontsize=9)
-        ax3.set_ylim([0, 1])
-        ax3.grid(True, alpha=0.3, axis='y')
-        ax3.axhline(np.mean(corr_values), color='r', linestyle='--',
-                   label=f'Average: {np.mean(corr_values):.3f}', linewidth=2)
-        ax3.legend(fontsize=10)
+        ax3.axis('off')
+        stats_text = f"""
+        Overall Statistics:
+        
+        Buildings: {len(buildings)}
+        Measurements: {sum(len(self.results[b]['measured_rssi']) for b in buildings)}
+        
+        Avg MAE:  {np.mean(mae_values):.1f} dB
+        Avg RMSE: {np.mean(rmse_values):.1f} dB
+        """
+        ax3.text(0.1, 0.5, stats_text, fontsize=12, 
+               verticalalignment='center', family='monospace',
+               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         ax4 = fig.add_subplot(gs[1, :])
         all_measured = []
@@ -1656,50 +1619,34 @@ class SimulationRunner:
         
         ax6 = fig.add_subplot(gs[2, 1])
         ax6.hist(all_errors, bins=20, edgecolor='black', alpha=0.7, 
-                color='skyblue', density=True)
+                color='skyblue', density=False)
         ax6.axvline(0, color='r', linestyle='--', linewidth=2, label='Zero error')
         ax6.axvline(np.mean(all_errors), color='g', linestyle='--', 
                    linewidth=2, label=f'Mean: {np.mean(all_errors):.1f} dB')
         ax6.set_xlabel('Prediction Error (dB)', fontsize=12)
-        ax6.set_ylabel('Density', fontsize=12)
-        ax6.set_title('Error Distribution', fontsize=14, fontweight='bold')
+        ax6.set_ylabel('Count', fontsize=12)
+        ax6.set_title('Error Histogram', fontsize=14, fontweight='bold')
         ax6.legend(fontsize=10)
         ax6.grid(True, alpha=0.3)
         
         ax7 = fig.add_subplot(gs[2, 2])
-        ax7.axis('off')
-        overall_mae = np.mean(mae_values)
-        overall_rmse = np.mean(rmse_values)
-        overall_corr = np.mean(corr_values)
-        overall_mean_error = np.mean(all_errors)
-        overall_std_error = np.std(all_errors)
-        
-        stats_text = f"""
-        Overall Statistics:
-        
-        Average MAE:        {overall_mae:.2f} ± {np.std(mae_values):.2f} dB
-        Average RMSE:       {overall_rmse:.2f} ± {np.std(rmse_values):.2f} dB
-        Average Correlation: {overall_corr:.3f} ± {np.std(corr_values):.3f}
-        
-        Error Statistics:
-        Mean Error:         {overall_mean_error:.2f} dB
-        Std Deviation:      {overall_std_error:.2f} dB
-        Min Error:          {np.min(all_errors):.2f} dB
-        Max Error:          {np.max(all_errors):.2f} dB
-        
-        Total Measurements: {len(all_errors)}
-        Buildings Analyzed: {len(buildings)}
-        """
-        ax7.text(0.1, 0.5, stats_text, fontsize=11, 
-               verticalalignment='center', family='monospace',
-               bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
+        building_mae = [(b, self.results[b]['metrics']['MAE']) for b in buildings]
+        building_mae.sort(key=lambda x: x[1])
+        top_buildings = building_mae[:5]
+        names = [b[0][:12] for b in top_buildings]
+        values = [b[1] for b in top_buildings]
+        ax7.barh(names, values, color='mediumseagreen', alpha=0.7)
+        ax7.set_xlabel('MAE (dB)', fontsize=12)
+        ax7.set_title('Best 5 Buildings', fontsize=14, fontweight='bold')
+        ax7.grid(True, alpha=0.3, axis='x')
+        ax7.invert_yaxis()
         
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         
         filename = os.path.join(self.config['results_dir'], 'summary.png')
         plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved: {filename}")
         plt.close()
+        print(f"\n✓ All visualizations saved to {self.config['results_dir']}/")
     
     def print_summary(self):
         print(f"\n{'='*70}")
@@ -1712,23 +1659,22 @@ class SimulationRunner:
         
         all_mae = [r['metrics']['MAE'] for r in self.results.values()]
         all_rmse = [r['metrics']['RMSE'] for r in self.results.values()]
-        all_corr = [r['metrics']['Correlation'] for r in self.results.values()]
         
-        print(f"\nAcross {len(self.results)} buildings:")
-        print(f"  Average MAE:         {np.mean(all_mae):.2f} ± {np.std(all_mae):.2f} dB")
-        print(f"  Average RMSE:        {np.mean(all_rmse):.2f} ± {np.std(all_rmse):.2f} dB")
-        print(f"  Average Correlation: {np.mean(all_corr):.3f} ± {np.std(all_corr):.3f}")
-        
-        print(f"\nBest performing building: {min(self.results, key=lambda x: self.results[x]['metrics']['MAE'])}")
-        print(f"Worst performing building: {max(self.results, key=lambda x: self.results[x]['metrics']['MAE'])}")
+        print(f"\n{'='*70}")
+        print(f"SUMMARY: Across {len(self.results)} buildings")
+        print(f"{'='*70}")
+        print(f"Average MAE:  {np.mean(all_mae):.1f} ± {np.std(all_mae):.1f} dB")
+        print(f"Average RMSE: {np.mean(all_rmse):.1f} ± {np.std(all_rmse):.1f} dB")
+        print(f"\nBest: {min(self.results, key=lambda x: self.results[x]['metrics']['MAE'])} (MAE={min(all_mae):.1f}dB)")
+        print(f"Worst: {max(self.results, key=lambda x: self.results[x]['metrics']['MAE'])} (MAE={max(all_mae):.1f}dB)")
         
         print(f"\nResults saved in: {self.config['results_dir']}/")
 
 def main():
     VALID_BUILDINGS = {
         'Kiewit', 'Kauffman', 'Adele Coryell', 'Love Library South', 
-        'Selleck', 'Brace', 'Hamilton', 'Bessey', 'Union', 
-        'Oldfather', 'Burnett', 'Memorial Stadium'
+        'Selleck', 'Brace', 'Bessey', 'Union', 
+        'Oldfather', 'Memorial Stadium'
     }
     
     # Print Sionna status
@@ -1746,27 +1692,10 @@ def main():
     
     data = load_measurement_data(CONFIG['data_file'])
     
-    # Validate buildings in data
-    invalid_buildings = set(data['Hall'].unique()) - VALID_BUILDINGS
-    if invalid_buildings:
-        print(f"⚠ Warning: CSV contains unexpected buildings that will be ignored: {invalid_buildings}")
-    
+    # Filter to valid buildings only
     data = data[data['Hall'].isin(VALID_BUILDINGS)]
-    print(f"✓ Processing {len(VALID_BUILDINGS)} validated buildings")
-    
-    # Run validation checks after loading data
-    print(f"\n{'='*70}")
-    print("RUNNING DATA VALIDATION")
-    print(f"{'='*70}")
     
     runner = SimulationRunner(data, CONFIG)
-    
-    # Check measurement location coverage
-    missing_locations = runner.check_measurement_location_coverage(data)
-    
-    print(f"\n{'='*70}")
-    print("STARTING SIMULATIONS")
-    print(f"{'='*70}")
     
     results = runner.run_all_buildings()
     

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scene version="2.1.0">
+
+<!-- Materials -->
+
+	<bsdf type="itu-radio-material" id="mat-concrete"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-drywall"><string name="type" value="plasterboard"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-glass"><string name="type" value="glass"/><float name="thickness" value="0.01"/></bsdf>
+
+<!-- Shapes -->
+
+	<shape type="rectangle" id="shape-floor-1" name="floor_1">
+		<transform name="to_world">
+			<translate x="0" y="0" z="0"/>
+			<scale x="75.92263200000001" y="111.61471200000001" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-2" name="wall_2">
+		<transform name="to_world">
+			<translate x="-60.0" y="0" z="10.0"/>
+			<rotate x="1" angle="90"/>
+			<scale x="2.5" y="10.0" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-floor-3" name="floor_3">
+		<transform name="to_world">
+			<translate x="-50.0" y="0" z="14.9"/>
+			<scale x="7.5" y="40.0" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-ceiling-4" name="ceiling_4">
+		<transform name="to_world">
+			<translate x="-50.0" y="0" z="19.0"/>
+			<scale x="7.5" y="40.0" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-5" name="window_5">
+		<transform name="to_world">
+			<translate x="-42.5" y="0" z="17.0"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.05" y="2.0" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-6" name="wall_6">
+		<transform name="to_world">
+			<translate x="-57.5" y="0" z="17.0"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="2.0" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+</scene>
