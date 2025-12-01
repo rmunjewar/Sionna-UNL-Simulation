@@ -1,0 +1,30 @@
+Hall,Location,SSID,Frequency (MHz),RSSI (dBm),Channel,Link speed (Mbps down / up),Tested speed (Mbps down / up),Total MAC addresses broadcasting,MAC addresses broadcasting to channel,Time,Notes,Dimensions (Approx. Google Maps),Actual,GPS Coordinates
+Kiewit,A310,eduroam,5200,-63,40,487 / 458,337.69 / 300.89,18,3,11.19.25 @ 16:15,"No class, empty",246.91 ft x 363.53 ft,"182,080 sq ft","40.82112, -96.69637"
+Kiewit,A310,NU-Guest,5745,-59,149,516 / 390,352.21 / 283.40,19,3,11.19.25 @ 16:31,,,,
+Kiewit,Lobby,eduroam,5784,-51,157,516 / 390,303.26 / 271.69,48,5,11.19.25 @ 17:09,Not many people,,,
+Kiewit,Lobby,NU-Guest,5785,-54,157,390 / 325,267.27 / 268.30,52,5,11.19.25 @ 17:01,,,,
+Hamilton,Stairwell,eduroam,5220,-82,44,275 / 309,170.66 / 129.54,11,3,11.21.25 @ 14:40,Phone hanging over center gap,80 ft x 242.89 ft,73600 sq ft,"40.8187177448511, -96.70472280568293"
+Hamilton,Stairwell,eduroam,2437,-75,6,N/A,N/A,22,11,11.21.25 @ 14:36,,,,
+Hamilton,Stairwell,NU-Guest,5220,-85,44,114 / 103,59.74 / 51.82,12,3,11.21.25 @ 14:54,,,,
+Hamilton,Stairwell,NU-Guest,2412,-76,1,N/A,N/A,22,3,11.21.25 @ 14:51,,,,
+Hamilton,Chemistry Resource Center,eduroam,5805,-73,161,412 / 458,330.31 / 354.85,14,5,11.21.25 @ 15:30,"5 feet away from location in stairwell, but not surrounded by concrete",,,
+Hamilton,Chemistry Resource Center,eduroam,2412,-55,1,N/A,N/A,26,5,11.21.25 @ 15:27,,,,
+Hamilton,Chemistry Resource Center,NU-Guest,5805,-73,161,573 / 573,425.17 / 434.68,12,3,11.21.25 @ 15:20,,,,
+Hamilton,Chemistry Resource Center,NU-Guest,2412,-52,1,N/A,N/A,24,6,11.21.25 @ 15:14,,,,
+Bessey,Hallway,eduroam,5785,-47,157,275 / 292,201.96 / 237.26,37,3,11.24.25 @ 12:50,No lecture,239.09 x 319.46 ft,76379.6914,"40.82003185739022, -96.70343124426097"
+Bessey,Hallway,NU-Guest,5785,-49,157,573 / 573,446.57 / 444.30,38,3,11.24.25 @ 12:53,,,,
+Adele Coryell,Schmoker Learning Commons,eduroam,5260,-59,52,412 / 130,217.53 / 156.90,49,6,11.19.25 @ 18:19,"Somewhat busy, each SSID had a ~-90 dBm RSSI broadcast alongside the main signal",250.30 ft x 134.81 ft,"30,000 feet","40.81868, -96.70286"
+Adele Coryell,Schmoker Learning Commons,NU-Guest,5260,-55,52,458 / 412,237.39 / 232.35,47,3,11.19.25 @ 18:14,Somewhat busy,,,
+Love Library South,Lobby,eduroam,5745,-50,149,344 / 573,302.92 / 406.24,39,3,11.19.25 @ 18:27,Barely anyone,213.44 ft x 141.25 ft,"31,000 feet","40.81782, -96.70256"
+Love Library South,Lobby,NU-Guest,5745,-47,149,573 / 573,324.07 / 329.09,47,3,11.19.25 @ 18:34,,,,
+Union,Fireplace,eduroam,5785,-55,157,573 / 573,204.85 / 322.32,43,3,11.24.25 @ 13:27,,256.88 ft x 313.54 ft,"32,000 sq ft","40.81759913886111, -96.70074670034467"
+Union,Fireplace,NU-Guest,5785,-50,157,458 / 516,150.46 / 313.78,41,3,11.24.25 @ 13:30,,,,
+Oldfather,204,eduroam,5240,-49,48,573 / 573,412.17 / 436.07,34,3,11.24.25 @ 11:59,,74.88 x 126.55 ft,9476.064,"40.81894, -96.69934"
+Oldfather,204,NU-Guest,5240,-52,48,573 / 573,330.11 / 383.21,37,3,11.24.25 @ 12:02,,,,
+Selleck,Dining Hall,eduroam,5745,-61,149,275 / 412,263.88 / 285.04,18,3,11.19.25 @ 17:46,Somewhat busy,207.22 ft x 388.06 ft,82693.2132,"40.81893248667192, -96.69926084501586"
+Selleck,Dining Hall,NU-Guest,5745,-62,149,412 / 325,212.19 / 223.96,23,3,11.19.25 @ 18:01,,,,
+Brace,210,eduroam,5765,-53,153,412 / 275,326.18 / 278.94,17,3,11.21.25 @ 12:25,Between classes,123.03 ft x 220.32 ft - 62.32 ft x 29.26 ft,25282.4864,"40.81812, -96.70637"
+Brace,210,NU-Guest,5765,-50,153,573 / 573,328.26 / 357.41,21,3,11.21.25 @ 12:30,Everyone probably on their phones before lecturers begin,,,
+Burnett,Hallway,eduroam,5785,-71,157,573 / 573,123.78 / 190.38,52,5,11.24.25 @ 12:43,Full attendance lecture,77.01 ft x 237.25 ft,18270.6225,"40.81932140465235, -96.70330329127334"
+Burnett,Hallway,NU-Guest,5785,-70,157,309 / 325,204.42 / 241.21,56,5,11.24.25 @ 12:36,,,,
+Memorial Stadium,Concourse,eduroam,5825,-60,165,258 / 258,169.93 / 209.41,24,2,11.24.25 @ 12:59,High school football championships,498.18 ft x 732.38 ft,,"40.820544812364524, -96.70544858164494"

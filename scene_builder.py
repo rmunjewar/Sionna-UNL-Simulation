@@ -28,32 +28,6 @@ class BuildingSceneBuilder:
     def add_window(self, position, size, material='glass'):
         obj = {'type': 'window', 'position': position, 'size': size, 'material': material}
         self.objects.append(obj)
-        
-    def add_room(self, corner_position, dimensions, height, wall_material='drywall', door_width=1.0):
-        x, y, z = corner_position
-        length, width = dimensions
-        wall_thick = 0.15
-        
-        # Add walls with a door opening in one wall
-        # Front wall (positive Y) with door
-        wall_length = length
-        door_gap = door_width
-        if wall_length > door_gap:
-            # Split wall into two segments with door in middle
-            left_seg = (wall_length - door_gap) / 2
-            self.add_wall([x + left_seg/2, y + width, z + height/2], [left_seg, wall_thick, height], wall_material)
-            self.add_wall([x + length - left_seg/2, y + width, z + height/2], [left_seg, wall_thick, height], wall_material)
-            # Add door in the gap
-            self.add_door([x + length/2, y + width, z + height/2], [door_gap, wall_thick, height*0.8], 'wood')
-        else:
-            self.add_wall([x + length/2, y + width, z + height/2], [length, wall_thick, height], wall_material)
-        
-        # Back wall (negative Y)
-        self.add_wall([x + length/2, y, z + height/2], [length, wall_thick, height], wall_material)
-        # Right wall (positive X)
-        self.add_wall([x + length, y + width/2, z + height/2], [wall_thick, width, height], wall_material)
-        # Left wall (negative X)
-        self.add_wall([x, y + width/2, z + height/2], [wall_thick, width, height], wall_material)
 
     def generate_xml(self, output_dir='scenes'):
         os.makedirs(output_dir, exist_ok=True)
@@ -61,7 +35,7 @@ class BuildingSceneBuilder:
         xml_content = self._build_header() + self._build_materials() + "".join([self._obj_to_xml(o) for o in self.objects]) + self._build_footer()
         with open(filename, 'w') as f:
             f.write(xml_content)
-        print(f"o Generated: {filename}")
+        print(f"Generated: {filename}")
         return filename
     
     def _build_header(self):
@@ -115,7 +89,6 @@ class BuildingSceneBuilder:
 
     def _get_mat_definition(self, name, mat_id):
         """Get material definition with ID for Sionna"""
-        # Use Sionna-compatible ITU radio materials
         mats = {
             'concrete': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>',
             'brick': '<bsdf type="itu-radio-material" id="{}"><string name="type" value="concrete"/><float name="thickness" value="0.2"/></bsdf>',
@@ -128,244 +101,527 @@ class BuildingSceneBuilder:
         return template.format(mat_id)
 
 def ft_to_m(ft):
+    """Convert feet to meters"""
     return ft * 0.3048
 
-def load_building_dimensions(csv_file='Wireless Communications - Data Collection - Data-2.csv'):
-    try:
-        try:
-            df = pd.read_csv(csv_file, quotechar='"', escapechar='\\', on_bad_lines='skip')
-        except Exception as e:
-            print(f"⚠ Error reading CSV with default settings: {e}")
-            df = pd.read_csv(csv_file, quotechar='"', on_bad_lines='skip', engine='python')
-        
-        df['Hall'] = df['Hall'].ffill()
-        
-        building_dims = {}
-        for building in df['Hall'].dropna().unique():
-            building_data = df[df['Hall'] == building]
-            length = None
-            width = None
-            area = None
-            floors = None
-            
-            length_vals = building_data['Length (ft)'].dropna()
-            width_vals = building_data['Width (ft)'].dropna()
-            area_vals = building_data['Area (sq ft)'].dropna()
-            floors_vals = building_data['Floors'].dropna()
-            
-            if len(length_vals) > 0:
-                length = float(length_vals.iloc[0])
-            if len(width_vals) > 0:
-                width = float(width_vals.iloc[0])
-            if len(area_vals) > 0:
-                area = float(area_vals.iloc[0])
-            if len(floors_vals) > 0:
-                try:
-                    floors = int(floors_vals.iloc[0])
-                except:
-                    floors = None
-            
-            building_dims[building] = {
-                'length_ft': length,
-                'width_ft': width,
-                'area_sqft': area,
-                'floors': floors
-            }
-        
-        # Validation: Check for expected buildings
-        expected_buildings = ['Kiewit', 'Kauffman', 'Adele Coryell', 'Love Library South', 'Selleck', 'Brace']
-        for building in expected_buildings:
-            if building not in building_dims:
-                print(f"⚠ Warning: {building} not found in CSV")
-            elif not building_dims[building].get('length_ft') or not building_dims[building].get('width_ft'):
-                print(f"⚠ Warning: {building} missing length or width")
-        
-        return building_dims
-    except Exception as e:
-        print(f"Could not load dimensions from CSV: {e}")
-        return {}
+# Material type mapping for each building
+# Exterior walls and structural elements use the building's material type
+BUILDING_MATERIALS = {
+    'Kiewit': 'glass_metal',  # Glass + Metal (windows and glass walls inside are glass)
+    'Adele Coryell': 'brick',
+    'Love Library South': 'concrete',
+    'Selleck': 'brick',
+    'Brace': 'brick',
+    'Bessey': 'brick',
+    'Union': 'brick',
+    'Hamilton': 'concrete',
+    'Oldfather': 'concrete',
+    'Memorial Stadium': 'concrete',
+    'Burnett': 'brick',
+}
 
-def create_kiewit_scene(dims=None):
+# Measurement locations with estimated coordinates based on sketches
+# Format: [x_meters, y_meters, z_meters (height)]
+MEASUREMENT_LOCATIONS = {
+    'Kiewit': {
+        'A310': [20.0, 40.0, 1.5],  # Northeast area, inside classroom
+        'Lobby': [0.0, -45.0, 1.5],  # Near entrance, southern area
+    },
+    'Hamilton': {
+        'Stairwell': [15.0, 20.0, 1.5],  # Near stairwell
+        'Chemistry Resource Center': [18.0, 25.0, 1.5],  # Near stairwell
+    },
+    'Adele Coryell': {
+        'Schmoker Learning Commons': [0.0, 5.0, 1.5],  # Center of open area
+    },
+    'Love Library South': {
+        'Lobby': [0.0, -15.0, 1.5],  # Central lobby area
+    },
+    'Selleck': {
+        'Dining Hall': [0.0, 0.0, 1.5],  # Center of large dining area
+    },
+    'Brace': {
+        '210': [10.0, 25.0, 1.5],  # Inside classroom 210
+    },
+    'Bessey': {
+        'Hallway': [0.0, 0.0, 1.5],  # Central hallway
+    },
+    'Union': {
+        'Fireplace': [0.0, 0.0, 1.5],  # Fireplace area
+    },
+    'Oldfather': {
+        '204': [10.0, 15.0, 1.5],  # Inside classroom 204
+    },
+    'Burnett': {
+        'Hallway': [0.0, 0.0, 1.5],  # Central hallway
+    },
+    'Memorial Stadium': {
+        'Concourse': [0.0, 0.0, 1.5],  # Concourse area
+    }
+}
+
+def create_kiewit_scene():
+    """
+    Kiewit Hall - Engineering building
+    Dimensions: 246.91 ft × 363.53 ft
+    Measurements: A310 (classroom), Lobby
+    Material: Glass + Metal (windows and glass walls inside building are glass)
+    """
     scene = BuildingSceneBuilder('kiewit')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(126.38) 
-        W = ft_to_m(245.73)
+    L = ft_to_m(246.91)  # ~75.3m
+    W = ft_to_m(363.53)  # ~110.8m
     
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'drywall')
     
-    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
+    # Exterior walls (metal frame with glass)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'metal')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'metal')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'metal')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'metal')
     
-    scene.add_room([10, 10, 0], [12, 10], 3.5, 'drywall')
-    
-    scene.add_wall([0, 0, 1.75], [1.0, 1.0, 3.5], 'concrete') 
-    
-    return scene
-
-def create_kauffman_scene(dims=None):
-    scene = BuildingSceneBuilder('kauffman')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(194.24)
-        W = ft_to_m(201.42)
-    
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
-    
-    # Exterior walls
-    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    
-    # Internal rooms for chemistry building
-    scene.add_room([-L/4, -W/4, 0], [L/3, W/3], 3.5, 'drywall')
-    scene.add_room([L/4, W/4, 0], [L/3, W/3], 3.5, 'drywall')
-    
-    # Stairwell area
-    scene.add_wall([0, 0, 1.75], [4.0, 4.0, 3.5], 'concrete')
-    
-    return scene
-
-def create_adele_coryell_scene(dims=None):
-    scene = BuildingSceneBuilder('adele_coryell')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(128.03)
-        W = ft_to_m(252.56)
-    
-    # Single floor library/learning commons
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'drywall')
-    
-    # Exterior walls
-    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    
-    # Windows on perimeter
-    scene.add_window([0, W/2, 1.75], [L*0.8, 0.1, 2.5], 'glass')
-    scene.add_window([0, -W/2, 1.75], [L*0.8, 0.1, 2.5], 'glass')
-    scene.add_window([L/2, 0, 1.75], [0.1, W*0.8, 2.5], 'glass')
-    scene.add_window([-L/2, 0, 1.75], [0.1, W*0.8, 2.5], 'glass')
-    
-    # Few internal walls for open study areas
-    scene.add_wall([0, 0, 1.75], [L*0.3, 0.15, 3.5], 'drywall')
-    
-    return scene
-
-def create_love_library_south_scene(dims=None):
-    scene = BuildingSceneBuilder('love_library_south')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(207.66)
-        W = ft_to_m(151.56)
-    
-    # 3-floor library
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'concrete')
-    
-    # Exterior walls
-    scene.add_wall([0, W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([0, -W/2, 1.75], [L, 0.3, 3.5], 'brick')
-    scene.add_wall([L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    scene.add_wall([-L/2, 0, 1.75], [0.3, W, 3.5], 'brick')
-    
-    # Glass windows on exterior
+    # Large windows (glass walls)
     scene.add_window([0, W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
     scene.add_window([0, -W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
     scene.add_window([L/2, 0, 1.75], [0.1, W*0.9, 2.5], 'glass')
     scene.add_window([-L/2, 0, 1.75], [0.1, W*0.9, 2.5], 'glass')
     
-    # Multiple internal support columns
-    column_spacing = 15.0
-    for x in np.arange(-L/3, L/3, column_spacing):
-        for y in np.arange(-W/3, W/3, column_spacing):
-            scene.add_wall([x, y, 1.75], [0.5, 0.5, 3.5], 'concrete')
+    # Central hallway (runs north-south) - glass walls inside building
+    hallway_width = 3.0
+    scene.add_wall([10, 0, 1.75], [0.15, W*0.8, 3.5], 'glass')
+    scene.add_wall([-10, 0, 1.75], [0.15, W*0.8, 3.5], 'glass')
+    
+    # Room A310 area (northeast, classroom with 4 walls)
+    # Position: approximately at [20, 40]
+    room_x, room_y = 20.0, 40.0
+    room_width = 8.0
+    room_length = 10.0
+    
+    # A310 walls (glass walls inside building)
+    scene.add_wall([room_x, room_y + room_length/2, 1.75], [room_width, 0.15, 3.5], 'glass')
+    scene.add_wall([room_x, room_y - room_length/2, 1.75], [room_width, 0.15, 3.5], 'glass')
+    scene.add_wall([room_x + room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'glass')
+    scene.add_wall([room_x - room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'glass')
+    scene.add_door([room_x - room_width/2, room_y, 1.75], [0.15, 1.0, 2.5], 'wood')
+    
+    # Stairwell (concrete, blocks signal)
+    scene.add_wall([-25, -40, 1.75], [4.0, 4.0, 3.5], 'concrete')
+    
+    # Lobby area (more open, just structural columns)
+    scene.add_wall([0, -45, 1.75], [1.0, 1.0, 3.5], 'concrete')
     
     return scene
 
-def create_selleck_scene(dims=None):
+def create_adele_coryell_scene():
+    """
+    Adele Coryell Hall - Learning Commons
+    Dimensions: 250.30 ft × 134.81 ft
+    Measurements: Schmoker Learning Commons (open study area)
+    Material: brick
+    """
+    scene = BuildingSceneBuilder('adele_coryell')
+    L = ft_to_m(250.30)  # ~76.3m
+    W = ft_to_m(134.81)  # ~41.1m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'drywall')
+    
+    # Exterior walls (brick)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    
+    # Large windows on perimeter (typical for modern learning commons)
+    scene.add_window([0, W/2, 1.75], [L*0.85, 0.1, 2.5], 'glass')
+    scene.add_window([0, -W/2, 1.75], [L*0.85, 0.1, 2.5], 'glass')
+    
+    # Minimal interior walls (open study space)
+    # Just a few partial walls for study nooks
+    scene.add_wall([L/4, 0, 1.75], [0.15, W*0.3, 2.0], 'drywall')
+    scene.add_wall([-L/4, 0, 1.75], [0.15, W*0.3, 2.0], 'drywall')
+    
+    # Structural columns
+    scene.add_wall([15, 10, 1.75], [0.8, 0.8, 3.5], 'concrete')
+    scene.add_wall([-15, 10, 1.75], [0.8, 0.8, 3.5], 'concrete')
+    
+    return scene
+
+def create_love_library_south_scene():
+    """
+    Love Library South
+    Dimensions: 213.44 ft × 141.25 ft
+    Measurements: Lobby
+    Material: concrete
+    """
+    scene = BuildingSceneBuilder('love_library_south')
+    L = ft_to_m(213.44)  # ~65.1m
+    W = ft_to_m(141.25)  # ~43.1m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'concrete')
+    
+    # Exterior walls (concrete)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    
+    # Windows
+    scene.add_window([0, W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
+    scene.add_window([0, -W/2, 1.75], [L*0.9, 0.1, 2.5], 'glass')
+    
+    # Support columns (library structure)
+    col_spacing = 15.0
+    for x in [-20, 0, 20]:
+        for y in [-10, 10]:
+            scene.add_wall([x, y, 1.75], [0.6, 0.6, 3.5], 'concrete')
+    
+    # Stairwell
+    scene.add_wall([25, -15, 1.75], [4.0, 4.0, 3.5], 'concrete')
+    
+    return scene
+
+def create_selleck_scene():
+    """
+    Selleck Dining Hall
+    Dimensions: 207.22 ft × 388.06 ft
+    Measurements: Dining Hall (large open area)
+    Material: brick
+    """
     scene = BuildingSceneBuilder('selleck')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(388.06)
-        W = ft_to_m(207.22)
+    L = ft_to_m(207.22)  # ~63.2m
+    W = ft_to_m(388.06)  # ~118.3m
     
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,4.0], [L + padding, W + padding, 0.1], 'drywall')
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 4.0], [L, W, 0.1], 'drywall')  # Higher ceiling for dining hall
     
-    scene.add_wall([0, W/2, 2.0], [L, 0.4, 4.0], 'brick')
+    # Exterior walls (brick)
+    wall_thick = 0.4
+    scene.add_wall([0, W/2, 2.0], [L, wall_thick, 4.0], 'brick')
+    scene.add_wall([0, -W/2, 2.0], [L, wall_thick, 4.0], 'brick')
+    scene.add_wall([L/2, 0, 2.0], [wall_thick, W, 4.0], 'brick')
+    scene.add_wall([-L/2, 0, 2.0], [wall_thick, W, 4.0], 'brick')
+    
+    # Very open interior (typical dining hall)
+    # Just structural columns
+    col_spacing = 20.0
+    for x in [-20, 0, 20]:
+        for y in [-40, -20, 0, 20, 40]:
+            scene.add_wall([x, y, 2.0], [1.0, 1.0, 4.0], 'concrete')
+    
+    # Kitchen/serving area (more walls)
+    scene.add_wall([0, -50, 2.0], [L*0.6, 0.15, 4.0], 'drywall')
     
     return scene
 
-def create_brace_scene(dims=None):
+def create_brace_scene():
+    """
+    Brace Hall - Laboratory building
+    Dimensions: 123.03 ft × 220.32 ft
+    Measurements: Room 210
+    Material: brick
+    """
     scene = BuildingSceneBuilder('brace')
-    if dims and dims.get('length_ft') and dims.get('width_ft'):
-        L = ft_to_m(dims['length_ft'])
-        W = ft_to_m(dims['width_ft'])
-    else:
-        L = ft_to_m(220.32)
-        W = ft_to_m(123.03)
+    L = ft_to_m(123.03)  # ~37.5m
+    W = ft_to_m(220.32)  # ~67.2m
     
-    # Add padding to floor/ceiling to prevent geometry leaks at edges
-    padding = 1.0
-    scene.add_floor([0,0,0], [L + padding, W + padding, 0.3], 'concrete')
-    scene.add_ceiling([0,0,3.5], [L + padding, W + padding, 0.1], 'concrete')
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'concrete')
     
-    scene.add_room([10, 5, 0], [12, 10], 3.5, 'brick')
+    # Exterior walls (brick)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    
+    # Central hallway
+    scene.add_wall([0, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    
+    # Room 210 (classroom/lab)
+    room_x, room_y = 10.0, 25.0
+    room_width = 8.0
+    room_length = 10.0
+    
+    scene.add_wall([room_x, room_y + room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+    scene.add_wall([room_x, room_y - room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+    scene.add_wall([room_x + room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'drywall')
+    scene.add_wall([room_x - room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'drywall')
+    scene.add_door([room_x - room_width/2, room_y, 1.75], [0.15, 1.0, 2.5], 'wood')
     
     return scene
 
+def create_hamilton_scene():
+    """
+    Hamilton Hall
+    Dimensions: 160 ft × 485.78 ft (doubled from original to match CSV area ~73,600 sq ft)
+    Measurements: Stairwell, Chemistry Resource Center
+    Material: concrete
+    """
+    scene = BuildingSceneBuilder('hamilton')
+    L = ft_to_m(160)  # ~48.8m (doubled from 80ft)
+    W = ft_to_m(485.78)  # ~148.2m (doubled from 242.89ft)
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'concrete')
+    
+    # Exterior walls (concrete)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    
+    # Stairwell area (hollow room with 4 thin concrete walls)
+    # Receiver is at (15, 20), so we create a hollow 4x5m room centered there
+    stair_x, stair_y = 15.0, 20.0
+    stair_width = 4.0  # meters
+    stair_length = 5.0  # meters
+    wall_thickness = 0.2  # meters (thin walls)
+    
+    # North wall (top)
+    scene.add_wall([stair_x, stair_y + stair_length/2, 1.75], [stair_width, wall_thickness, 3.5], 'concrete')
+    # South wall (bottom)
+    scene.add_wall([stair_x, stair_y - stair_length/2, 1.75], [stair_width, wall_thickness, 3.5], 'concrete')
+    # East wall (right)
+    scene.add_wall([stair_x + stair_width/2, stair_y, 1.75], [wall_thickness, stair_length, 3.5], 'concrete')
+    # West wall (left)
+    scene.add_wall([stair_x - stair_width/2, stair_y, 1.75], [wall_thickness, stair_length, 3.5], 'concrete')
+    
+    # Chemistry Resource Center (5 feet from stairwell)
+    crc_x, crc_y = 18.0, 25.0
+    scene.add_wall([crc_x, crc_y + 4, 1.75], [8.0, 0.15, 3.5], 'drywall')
+    scene.add_wall([crc_x, crc_y - 4, 1.75], [8.0, 0.15, 3.5], 'drywall')
+    
+    # Central hallway
+    scene.add_wall([0, 0, 1.75], [L*0.7, 0.15, 3.5], 'drywall')
+    
+    return scene
+
+def create_bessey_scene():
+    """
+    Bessey Hall
+    Dimensions: 239.09 ft × 319.46 ft
+    Measurements: Hallway
+    Material: brick
+    """
+    scene = BuildingSceneBuilder('bessey')
+    L = ft_to_m(239.09)  # ~72.9m
+    W = ft_to_m(319.46)  # ~97.4m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'drywall')
+    
+    # Exterior walls (brick)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    
+    # Central hallway
+    scene.add_wall([0, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    scene.add_wall([10, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    scene.add_wall([-10, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    
+    # Structural columns
+    for x in [-15, 0, 15]:
+        for y in [-30, 0, 30]:
+            scene.add_wall([x, y, 1.75], [0.8, 0.8, 3.5], 'concrete')
+    
+    return scene
+
+def create_union_scene():
+    """
+    Union Building
+    Dimensions: 256.88 ft × 313.54 ft
+    Measurements: Fireplace
+    Material: brick
+    """
+    scene = BuildingSceneBuilder('union')
+    L = ft_to_m(256.88)  # ~78.3m
+    W = ft_to_m(313.54)  # ~95.5m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'drywall')
+    
+    # Exterior walls (brick)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    
+    # Open area with fireplace (central)
+    # Fireplace area
+    scene.add_wall([0, 0, 1.75], [3.0, 2.0, 2.5], 'brick')
+    
+    # Support columns
+    for x in [-20, 0, 20]:
+        for y in [-25, 0, 25]:
+            scene.add_wall([x, y, 1.75], [0.8, 0.8, 3.5], 'concrete')
+    
+    return scene
+
+def create_oldfather_scene():
+    """
+    Oldfather Hall
+    Dimensions: 74.88 ft × 126.55 ft
+    Measurements: Room 204
+    Material: concrete
+    """
+    scene = BuildingSceneBuilder('oldfather')
+    L = ft_to_m(74.88)  # ~22.8m
+    W = ft_to_m(126.55)  # ~38.6m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'concrete')
+    
+    # Exterior walls (concrete)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'concrete')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'concrete')
+    
+    # Central hallway
+    scene.add_wall([0, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    
+    # Room 204 (classroom)
+    room_x, room_y = 10.0, 15.0
+    room_width = 7.0
+    room_length = 9.0
+    
+    scene.add_wall([room_x, room_y + room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+    scene.add_wall([room_x, room_y - room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+    scene.add_wall([room_x + room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'drywall')
+    scene.add_wall([room_x - room_width/2, room_y, 1.75], [0.15, room_length, 3.5], 'drywall')
+    scene.add_door([room_x - room_width/2, room_y, 1.75], [0.15, 1.0, 2.5], 'wood')
+    
+    return scene
+
+def create_burnett_scene():
+    """
+    Burnett Hall
+    Dimensions: 77.01 ft × 237.25 ft
+    Measurements: Hallway
+    Material: brick
+    """
+    scene = BuildingSceneBuilder('burnett')
+    L = ft_to_m(77.01)  # ~23.5m
+    W = ft_to_m(237.25)  # ~72.3m
+    
+    # Floor and ceiling
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 3.5], [L, W, 0.1], 'drywall')
+    
+    # Exterior walls (brick)
+    wall_thick = 0.3
+    scene.add_wall([0, W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([0, -W/2, 1.75], [L, wall_thick, 3.5], 'brick')
+    scene.add_wall([L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    scene.add_wall([-L/2, 0, 1.75], [wall_thick, W, 3.5], 'brick')
+    
+    # Central hallway
+    scene.add_wall([0, 0, 1.75], [0.15, W*0.8, 3.5], 'drywall')
+    
+    # Classroom areas along hallway
+    for y_offset in [-30, -15, 0, 15, 30]:
+        room_width = 6.0
+        room_length = 8.0
+        scene.add_wall([8, y_offset + room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+        scene.add_wall([8, y_offset - room_length/2, 1.75], [room_width, 0.15, 3.5], 'drywall')
+        scene.add_wall([8 + room_width/2, y_offset, 1.75], [0.15, room_length, 3.5], 'drywall')
+    
+    return scene
+
+def create_memorial_stadium_scene():
+    """
+    Memorial Stadium
+    Dimensions: 498.18 ft × 732.38 ft
+    Measurements: Concourse
+    Material: concrete
+    """
+    scene = BuildingSceneBuilder('memorial_stadium')
+    L = ft_to_m(498.18)  # ~151.8m
+    W = ft_to_m(732.38)  # ~223.2m
+    
+    # Floor and ceiling (stadium concourse)
+    scene.add_floor([0, 0, 0], [L, W, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, 5.0], [L, W, 0.1], 'concrete')  # Higher ceiling for stadium
+    
+    # Exterior walls (concrete)
+    wall_thick = 0.4
+    scene.add_wall([0, W/2, 2.5], [L, wall_thick, 5.0], 'concrete')
+    scene.add_wall([0, -W/2, 2.5], [L, wall_thick, 5.0], 'concrete')
+    scene.add_wall([L/2, 0, 2.5], [wall_thick, W, 5.0], 'concrete')
+    scene.add_wall([-L/2, 0, 2.5], [wall_thick, W, 5.0], 'concrete')
+    
+    # Large open concourse area with support columns
+    col_spacing = 30.0
+    for x in range(-60, 61, 30):
+        for y in range(-90, 91, 30):
+            scene.add_wall([x, y, 2.5], [1.5, 1.5, 5.0], 'concrete')
+    
+    # Entry areas (more open)
+    scene.add_window([0, W/2, 2.5], [L*0.3, 0.1, 3.0], 'glass')
+    scene.add_window([0, -W/2, 2.5], [L*0.3, 0.1, 3.0], 'glass')
+    
+    return scene
 
 def main():
-    print("Generating scenes based on CSV data with accurate measurements...")
+    print("="*70)
+    print("GENERATING REALISTIC BUILDING SCENES")
+    print("Based on actual measurements and floor plan sketches but using approximations")
+    print("="*70)
     
-    building_dims = load_building_dimensions('Wireless Communications - Data Collection - Data-2.csv')
+    buildings = [
+        ('Kiewit', create_kiewit_scene),
+        ('Hamilton', create_hamilton_scene),
+        ('Bessey', create_bessey_scene),
+        ('Adele Coryell', create_adele_coryell_scene),
+        ('Love Library South', create_love_library_south_scene),
+        ('Union', create_union_scene),
+        ('Oldfather', create_oldfather_scene),
+        ('Selleck', create_selleck_scene),
+        ('Brace', create_brace_scene),
+        ('Burnett', create_burnett_scene),
+        ('Memorial Stadium', create_memorial_stadium_scene),
+    ]
     
-    building_map = {
-        'Kiewit': (create_kiewit_scene, 'kiewit'),
-        'Kauffman': (create_kauffman_scene, 'kauffman'),
-        'Adele Coryell': (create_adele_coryell_scene, 'adele_coryell'),
-        'Love Library South': (create_love_library_south_scene, 'love_library_south'),
-        'Selleck': (create_selleck_scene, 'selleck'),
-        'Brace': (create_brace_scene, 'brace')
-    }
-    
-    for building_name, (builder_func, scene_name) in building_map.items():
+    for building_name, builder_func in buildings:
         try:
-            dims = building_dims.get(building_name, None)
-            if dims:
-                print(f"Using CSV dimensions for {building_name}: {dims.get('length_ft', 'N/A')} x {dims.get('width_ft', 'N/A')} ft")
-            scene = builder_func(dims)
+            print(f"\nGenerating {building_name}...")
+            scene = builder_func()
             scene.generate_xml()
         except Exception as e:
             print(f"Error generating {building_name}: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    print("\n" + "="*70)
+    print("SCENE GENERATION COMPLETE")
+    print("="*70)
+    
+    # Print measurement locations for reference
+    print("\nMeasurement Locations (in building coordinates):")
+    for building, locations in MEASUREMENT_LOCATIONS.items():
+        print(f"\n{building}:")
+        for location, coords in locations.items():
+            print(f"  {location}: x={coords[0]:.1f}m, y={coords[1]:.1f}m, z={coords[2]:.1f}m")
 
 if __name__ == "__main__":
     main()
