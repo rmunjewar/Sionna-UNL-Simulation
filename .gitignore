@@ -1,3 +1,7 @@
+driver/
+driver-dist/
+*.Identifier
+
 # Virtual Environment
 myenv/
 venv/

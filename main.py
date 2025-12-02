@@ -6,6 +6,12 @@ import os
 import sys
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import warnings
+
+warnings.filterwarnings('ignore')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+print("Determining GPU configuration...")
 
 try:
     from scene_builder import MEASUREMENT_LOCATIONS
@@ -32,9 +38,10 @@ try:
     
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
-        print(f"✓ Found {len(gpus)} GPU device(s)")
+        print(f"Found {len(gpus)} GPU(s)")
+
     else:
-        print("⚠ No GPU devices found, will use CPU")
+        print("No GPU devices found, will use CPU")
         
 except ImportError as e:
     print(f"   Error type: {type(e).__name__}")
@@ -245,7 +252,7 @@ def load_measurement_data(filepath):
     df = df[df['Frequency (MHz)'] >= 5000]
     filtered_count = initial_count - len(df)
     if filtered_count > 0:
-        print(f"⚠ Filtered out {filtered_count} 2.4 GHz measurements (keeping only 5 GHz)")
+        print(f"Filtered out {filtered_count} 2.4 GHz measurements (keeping only 5 GHz)")
     
     df['Hall'] = df['Hall'].map(lambda x: BUILDING_NAME_MAP.get(x, x) if x in BUILDING_NAME_MAP else x)
     
@@ -418,7 +425,7 @@ class SionnaRayTracer:
     
     def generate_coverage_heatmap(self, building_name, rx_positions, measured_rssi, output_dir='results'):
         if self.scene is None:
-            print(f"⚠ Cannot generate heatmap for {building_name}: scene not loaded")
+            print(f"Cannot generate heatmap for {building_name}: scene not loaded")
             return None
         
         try:
@@ -432,7 +439,7 @@ class SionnaRayTracer:
                     diffraction=True
                 )
             except AttributeError:
-                print(f"⚠ Native coverage_map not supported by this Sionna version. Skipping heatmap.")
+                print(f"Native coverage_map not supported by this Sionna version. Skipping heatmap.")
                 return None
             
             if hasattr(coverage_map, 'power_map'):
@@ -443,7 +450,7 @@ class SionnaRayTracer:
                 power_map = np.array(coverage_map) if hasattr(coverage_map, '__array__') else None
             
             if power_map is None:
-                print(f"⚠ Could not extract power map from coverage_map for {building_name}")
+                print(f"Could not extract power map from coverage_map for {building_name}")
                 return None
             
             if hasattr(power_map, 'numpy'):
@@ -503,7 +510,7 @@ class SionnaRayTracer:
                     interpolation='bilinear'
                 )
             else:
-                print(f"⚠ Unexpected coverage map shape: {rssi_map.shape}")
+                print(f"Unexpected coverage map shape: {rssi_map.shape}")
                 return None
             
             cbar = plt.colorbar(im, ax=ax)
@@ -550,13 +557,13 @@ class SionnaRayTracer:
                 f"{building_name.replace(' ', '_')}_coverage_heatmap.png"
             )
             plt.savefig(filename, dpi=300, bbox_inches='tight')
-            print(f"✓ Saved coverage heatmap: {filename}")
+            print(f"Saved coverage heatmap: {filename}")
             plt.close()
             
             return filename
             
         except Exception as e:
-            print(f"⚠ Error generating heatmap for {building_name}: {e}")
+            print(f"Error generating heatmap for {building_name}: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -572,16 +579,16 @@ class SimulationRunner:
     
     def validate_receiver_positions(self, building_name, rx_positions, scene_file=None):
         if scene_file is None or not os.path.exists(scene_file):
-            print(f"⚠ Cannot validate receiver positions for {building_name}: scene file not available")
+            print(f"Cannot validate receiver positions for {building_name}: scene file not available")
             return []
         
         geometry, _ = parse_scene_xml(scene_file)
         if geometry is None:
-            print(f"⚠ Cannot validate receiver positions for {building_name}: failed to parse geometry")
+            print(f"Cannot validate receiver positions for {building_name}: failed to parse geometry")
             return []
         
         if not geometry['floors']:
-            print(f"⚠ Cannot validate receiver positions for {building_name}: no floor geometry found")
+            print(f"Cannot validate receiver positions for {building_name}: no floor geometry found")
             return []
         
         min_x, max_x = float('inf'), float('-inf')
@@ -602,24 +609,24 @@ class SimulationRunner:
                 outside_indices.append(i)
         
         if outside_indices:
-            print(f"⚠ {building_name}: {len(outside_indices)} receiver(s) outside building boundaries")
+            print(f"{building_name}: {len(outside_indices)} receiver(s) outside building boundaries")
             for idx in outside_indices:
                 rx_pos = rx_positions[idx]
                 print(f"   Receiver {idx} at [{rx_pos[0]:.2f}, {rx_pos[1]:.2f}] is outside bounds "
                       f"[{min_x:.2f}, {max_x:.2f}] x [{min_y:.2f}, {max_y:.2f}]")
         else:
-            print(f"✓ {building_name}: All receiver positions are inside building boundaries")
+            print(f"{building_name}: All receiver positions are inside building boundaries")
         
         return outside_indices
     
     def validate_building_dimensions(self, building_name, scene_file=None, csv_area_sqft=None):
         if scene_file is None or not os.path.exists(scene_file):
-            print(f"⚠ Cannot validate dimensions for {building_name}: scene file not available")
+            print(f"Cannot validate dimensions for {building_name}: scene file not available")
             return None, csv_area_sqft, None
         
         geometry, _ = parse_scene_xml(scene_file)
         if geometry is None:
-            print(f"⚠ Cannot validate dimensions for {building_name}: failed to parse geometry")
+            print(f"Cannot validate dimensions for {building_name}: failed to parse geometry")
             return None, csv_area_sqft, None
         
         total_area_sqft = 0.0
@@ -631,7 +638,7 @@ class SimulationRunner:
             total_area_sqft += area_ft2
         
         if csv_area_sqft is None or pd.isna(csv_area_sqft):
-            print(f"⚠ {building_name}: CSV 'Actual' area not available for comparison")
+            print(f"{building_name}: CSV 'Actual' area not available for comparison")
             print(f"   Calculated area: {total_area_sqft:.0f} sq ft")
             return total_area_sqft, None, None
         
@@ -640,16 +647,16 @@ class SimulationRunner:
             discrepancy = abs(total_area_sqft - csv_area) / csv_area * 100
             
             if discrepancy > 10.0:
-                print(f"⚠ {building_name}: Area discrepancy {discrepancy:.1f}% (>10% threshold)")
+                print(f"{building_name}: Area discrepancy {discrepancy:.1f}% (>10% threshold)")
                 print(f"   Calculated: {total_area_sqft:.0f} sq ft, CSV 'Actual': {csv_area:.0f} sq ft")
                 print(f"   This may indicate multi-floor building or geometry mismatch")
             else:
-                print(f"✓ {building_name}: Area matches CSV (discrepancy: {discrepancy:.1f}%)")
+                print(f"{building_name}: Area matches CSV (discrepancy: {discrepancy:.1f}%)")
                 print(f"   Calculated: {total_area_sqft:.0f} sq ft, CSV 'Actual': {csv_area:.0f} sq ft")
             
             return total_area_sqft, csv_area, discrepancy
         except (ValueError, TypeError):
-            print(f"⚠ {building_name}: Could not parse CSV area value: {csv_area_sqft}")
+            print(f"{building_name}: Could not parse CSV area value: {csv_area_sqft}")
             return total_area_sqft, csv_area_sqft, None
     
     def check_measurement_location_coverage(self, data):
@@ -685,13 +692,13 @@ class SimulationRunner:
                 missing[building_name] = missing_locs
         
         if missing:
-            print(f"\n⚠ Missing measurement locations in MEASUREMENT_LOCATIONS:")
+            print(f"\nMissing measurement locations in MEASUREMENT_LOCATIONS:")
             for building, locs in missing.items():
                 print(f"   {building}: {locs}")
                 if building in MEASUREMENT_LOCATIONS:
                     print(f"      Available: {list(MEASUREMENT_LOCATIONS[building].keys())}")
         else:
-            print(f"\n✓ All measurement locations are covered in MEASUREMENT_LOCATIONS")
+            print(f"\nAll measurement locations are covered in MEASUREMENT_LOCATIONS")
         
         return missing
     
@@ -732,7 +739,7 @@ class SimulationRunner:
             print(f"Receiver at {rx_pos}")
             return np.array([rx_pos])
         else:
-            print(f"⚠ Warning: No receiver location found for {building_name}")
+            print(f"Warning: No receiver location found for {building_name}")
             return np.array([[0.0, 0.0, 1.5]])
     
     def simulate_building(self, building_name):
@@ -766,7 +773,7 @@ class SimulationRunner:
             scene_file = os.path.abspath(scene_file)
             
             if not os.path.exists(scene_file):
-                print(f"⚠ Scene file not found: {scene_file}")
+                print(f"Scene file not found: {scene_file}")
             
             if os.path.exists(scene_file):
                 try:
@@ -786,7 +793,7 @@ class SimulationRunner:
                             method = "Sionna Ray Tracing"
                         
                 except Exception as e:
-                    print(f"❌ Sionna ray tracing failed: {e}")
+                    print(f"Sionna ray tracing failed: {e}")
                     print(f"   Error type: {type(e).__name__}")
                     import traceback
                     traceback.print_exc()
@@ -795,7 +802,7 @@ class SimulationRunner:
         
         if simulated_rssi is None:
             if not SIONNA_AVAILABLE:
-                print("⚠ Sionna not available - cannot use ray tracing")
+                print("Sionna not available - cannot use ray tracing")
                 if self.config['fallback_to_simple']:
                     print("Using simplified propagation model (fallback enabled)")
                     model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
@@ -810,12 +817,12 @@ class SimulationRunner:
                     simulated_rssi = np.array(simulated_rssi)
                     method = "Simplified Model"
                 else:
-                    print("❌ Simulation failed: Sionna unavailable and fallback disabled")
+                    print("Simulation failed: Sionna unavailable and fallback disabled")
                     print("   To enable fallback, set CONFIG['fallback_to_simple'] = True")
                     print("   Or install Sionna: pip install sionna")
                     return None
             elif not os.path.exists(scene_file):
-                print(f"⚠ Scene file not found: {scene_file}")
+                print(f"Scene file not found: {scene_file}")
                 if self.config['fallback_to_simple']:
                     print("Using simplified propagation model (fallback enabled)")
                     model = SimplePropagationModel(avg_frequency, tx_power_dbm=20)
@@ -830,10 +837,10 @@ class SimulationRunner:
                     simulated_rssi = np.array(simulated_rssi)
                     method = "Simplified Model"
                 else:
-                    print("❌ Simulation failed: Scene file missing and fallback disabled")
+                    print("Simulation failed: Scene file missing and fallback disabled")
                     return None
             else:
-                print("❌ Simulation failed: Unknown error")
+                print("Simulation failed: Unknown error")
                 return None
         
         print(f"  Method: {method}")
@@ -867,7 +874,7 @@ class SimulationRunner:
             mean_simulated = np.mean(simulated_rssi)
             calibration_offset = mean_measured - mean_simulated
             
-            print(f"\n📊 Auto-calibration for {building_name}:")
+            print(f"\nAuto-calibration for {building_name}:")
             print(f"   Mean measured RSSI: {mean_measured:.1f} dBm")
             print(f"   Mean simulated RSSI: {mean_simulated:.1f} dBm")
             print(f"   Applying offset: {calibration_offset:+.1f} dB")
@@ -877,7 +884,7 @@ class SimulationRunner:
         metrics = self.calculate_metrics(simulated_rssi, measured_rssi)
         
         if metrics['MAE'] > 15.0:
-            print(f"\n⚠ High error detected for {building_name} - Showing detailed comparison:")
+            print(f"\nHigh error detected for {building_name} - Showing detailed comparison:")
             print(f"   Location                 | Measured RSSI | Simulated RSSI | Error")
             print(f"   {'-'*70}")
             for i, (loc, meas, sim) in enumerate(zip(building_data['Location'].values, measured_rssi, simulated_rssi)):
@@ -918,7 +925,7 @@ class SimulationRunner:
         return metrics
     
     def print_metrics(self, building, metrics):
-        print(f"✓ {building}: MAE={metrics['MAE']:.1f}dB, RMSE={metrics['RMSE']:.1f}dB, Max={metrics['Max_Error']:.1f}dB")
+        print(f"{building}: MAE={metrics['MAE']:.1f}dB, RMSE={metrics['RMSE']:.1f}dB, Max={metrics['Max_Error']:.1f}dB")
     
     def run_all_buildings(self):
         buildings = self.data['Hall'].unique()
@@ -935,9 +942,8 @@ class SimulationRunner:
     def create_visualizations(self):
         print(f"\n{'='*70}")
         print("CREATING VISUALIZATIONS")
-        print(f"{'='*70}")
+        print(f"{'='*70}\n")
         
-        print("Generating visualizations...")
         for building, result in self.results.items():
             self._plot_building_comparison(result)
             self._plot_scene_layout(result)
@@ -1248,7 +1254,7 @@ class SimulationRunner:
                            textcoords='offset points', fontsize=8, 
                            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8), zorder=6)
         else:
-            print(f"⚠ Warning: Plotting mismatch. Locations: {len(rx_positions)}, Measurements: {len(measured_rssi)}")
+            print(f"Warning: Plotting mismatch. Locations: {len(rx_positions)}, Measurements: {len(measured_rssi)}")
             ax.scatter(rx_positions[:, 0], rx_positions[:, 1], color='blue', s=200, zorder=4,
                       label='Measurement Points', edgecolors='black', linewidths=1.5)
         
@@ -1364,7 +1370,7 @@ class SimulationRunner:
             f"{building.replace(' ', '_')}_comparison.png"
         )
         plt.savefig(filename, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved: {filename}")
+        print(f"Saved: {filename}")
         plt.close()
     
     def _plot_summary(self):
@@ -1493,13 +1499,9 @@ class SimulationRunner:
         filename = os.path.join(self.config['results_dir'], 'summary.png')
         plt.savefig(filename, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"\n✓ All visualizations saved to {self.config['results_dir']}/")
+        print(f"\nAll visualizations saved to {self.config['results_dir']}/")
     
     def print_summary(self):
-        print(f"\n{'='*70}")
-        print("FINAL SUMMARY")
-        print(f"{'='*70}")
-        
         if len(self.results) == 0:
             print("No results to summarize")
             return
@@ -1509,7 +1511,7 @@ class SimulationRunner:
         
         print(f"\n{'='*70}")
         print(f"SUMMARY: Across {len(self.results)} buildings")
-        print(f"{'='*70}")
+        print(f"{'='*70}\n")
         print(f"Average MAE:  {np.mean(all_mae):.1f} ± {np.std(all_mae):.1f} dB")
         print(f"Average RMSE: {np.mean(all_rmse):.1f} ± {np.std(all_rmse):.1f} dB")
         print(f"\nBest: {min(self.results, key=lambda x: self.results[x]['metrics']['MAE'])} (MAE={min(all_mae):.1f}dB)")
@@ -1525,16 +1527,16 @@ def main():
     }
     
     if not SIONNA_AVAILABLE:
-        print("⚠ WARNING: Sionna is not installed or failed to import")
+        print("WARNING: Sionna is not installed or failed to import")
         print("   The simulation will use simplified propagation model")
         print("   To install Sionna: pip install sionna")
         print("   Note: Sionna requires TensorFlow and may have compatibility issues on macOS\n")
     else:
-        print("✓ Sionna is available - ray tracing enabled\n")
+        print("Sionna is available - ray tracing enabled\n")
     
     scenes_dir = CONFIG['scenes_dir']
     if not os.path.exists(scenes_dir) or len(os.listdir(scenes_dir)) == 0:
-        print(f"⚠ No scene files found in '{scenes_dir}/'")
+        print(f"No scene files found in '{scenes_dir}/'")
     
     data = load_measurement_data(CONFIG['data_file'])
     
@@ -1548,9 +1550,8 @@ def main():
     
     runner.print_summary()
     
-    print(f"\n{'-'*73}")
-    print("SIMULATION COMPLETE!")
-
+    print(f"\n{'-'*70}")
+    print("SIMULATION COMPLETE\n")
 
 if __name__ == "__main__":
     main()
