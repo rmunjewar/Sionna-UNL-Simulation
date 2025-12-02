@@ -240,6 +240,13 @@ def load_measurement_data(filepath):
     
     df = df.dropna(subset=['RSSI (dBm)', 'Hall'])
     
+    # Filter out all 2.4 GHz measurements (keep only 5 GHz and above)
+    initial_count = len(df)
+    df = df[df['Frequency (MHz)'] >= 5000]
+    filtered_count = initial_count - len(df)
+    if filtered_count > 0:
+        print(f"⚠ Filtered out {filtered_count} 2.4 GHz measurements (keeping only 5 GHz)")
+    
     df['Hall'] = df['Hall'].map(lambda x: BUILDING_NAME_MAP.get(x, x) if x in BUILDING_NAME_MAP else x)
     
     df = df[df['Hall'].notna()]
@@ -735,20 +742,6 @@ class SimulationRunner:
         
         if len(building_data) == 0:
             return None
-        
-        frequencies = building_data['Frequency (MHz)'].values
-        freq_5ghz = frequencies >= 5000
-        freq_24ghz = frequencies < 3000
-        
-        if np.any(freq_24ghz) and np.any(freq_5ghz):
-            print(f"⚠ WARNING: {building_name} has MIXED 2.4 GHz and 5 GHz measurements!")
-            print(f"   Frequencies: {sorted(set(frequencies))}")
-            print(f"   Filtering to 5 GHz only (2.4/5 GHz can't be averaged!)")
-            building_data = building_data[building_data['Frequency (MHz)'] >= 5000].copy()
-            if len(building_data) == 0:
-                print(f"   No 5 GHz measurements available - skipping {building_name}")
-                return None
-            print(f"   Remaining measurements after filtering: {len(building_data)}")
         
         measured_rssi = building_data['RSSI (dBm)'].values
         frequencies = building_data['Frequency (MHz)'].values
