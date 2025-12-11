@@ -247,7 +247,6 @@ def load_measurement_data(filepath):
     
     df = df.dropna(subset=['RSSI (dBm)', 'Hall'])
     
-    # Filter out all 2.4 GHz measurements (keep only 5 GHz and above)
     initial_count = len(df)
     df = df[df['Frequency (MHz)'] >= 5000]
     filtered_count = initial_count - len(df)
@@ -660,10 +659,6 @@ class SimulationRunner:
             return total_area_sqft, csv_area_sqft, None
     
     def check_measurement_location_coverage(self, data):
-        """
-        Report which CSV locations are missing from MEASUREMENT_LOCATIONS dictionary.
-        Returns dictionary mapping building names to lists of missing locations.
-        """
         missing = {}
         
         for building_name in data['Hall'].unique():
@@ -952,14 +947,6 @@ class SimulationRunner:
         self._plot_summary()
     
     def _plot_validation_overlay(self, result):
-        """
-        Create a top-down 2D validation view showing:
-        - Building walls/boundaries
-        - Receiver dots labeled with location names
-        - AP position as red triangle
-        - Distance circles (10m, 20m, 30m)
-        - Color-coded materials
-        """
         building = result['building']
         ap_position = result['ap_position']
         rx_positions = result['rx_positions']
@@ -1087,13 +1074,13 @@ class SimulationRunner:
         fig, ax = plt.subplots(1, 1, figsize=(14, 12))
         
         material_colors = {
-            'concrete': '#8B7355',  # Brown-gray
-            'brick': '#A0522D',     # Sienna
-            'drywall': '#F5F5DC',   # Beige
-            'glass': '#87CEEB',     # Sky blue (semi-transparent)
-            'wood': '#DEB887',      # Burlywood
-            'plasterboard': '#F5F5DC',  # Beige (same as drywall)
-            'metal': '#708090'      # Slate gray
+            'concrete': '#8B7355',
+            'brick': '#A0522D',
+            'drywall': '#F5F5DC',
+            'glass': '#87CEEB',
+            'wood': '#DEB887',
+            'plasterboard': '#F5F5DC',
+            'metal': '#708090'
         }
         
         material_alphas = {
@@ -1149,14 +1136,14 @@ class SimulationRunner:
                     mat = door['material']
                     color = material_colors.get(mat, '#DEB887')
                     
-                    if size[0] > size[1]:  # Horizontal door
+                    if size[0] > size[1]:
                         rect = Rectangle(
                             (pos[0] - size[0]/2, pos[1] - size[1]/2),
                             size[0], size[1],
                             facecolor=color, edgecolor='brown', linewidth=1.5,
                             alpha=0.6, zorder=2, linestyle='--', label='Door' if door == geometry['doors'][0] else ''
                         )
-                    else:  # Vertical door
+                    else:
                         rect = Rectangle(
                             (pos[0] - size[1]/2, pos[1] - size[0]/2),
                             size[1], size[0],
@@ -1171,14 +1158,14 @@ class SimulationRunner:
                     mat = window['material']
                     color = material_colors.get(mat, '#87CEEB')
                     
-                    if size[0] > size[1]:  # Horizontal window
+                    if size[0] > size[1]:
                         rect = Rectangle(
                             (pos[0] - size[0]/2, pos[1] - size[1]/2),
                             size[0], size[1],
                             facecolor=color, edgecolor='blue', linewidth=1,
                             alpha=0.3, zorder=2, label='Window' if window == geometry['windows'][0] else ''
                         )
-                    else:  # Vertical window
+                    else:
                         rect = Rectangle(
                             (pos[0] - size[1]/2, pos[1] - size[0]/2),
                             size[1], size[0],

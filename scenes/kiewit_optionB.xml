@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scene version="2.1.0">
+
+<!-- Materials -->
+
+	<bsdf type="itu-radio-material" id="mat-concrete"><string name="type" value="concrete"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-drywall"><string name="type" value="plasterboard"/><float name="thickness" value="0.1"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-glass"><string name="type" value="glass"/><float name="thickness" value="0.01"/></bsdf>
+	<bsdf type="itu-radio-material" id="mat-metal"><string name="type" value="metal"/><float name="thickness" value="0.1"/></bsdf>
+
+<!-- Shapes -->
+
+	<shape type="rectangle" id="shape-floor-1" name="floor_1">
+		<transform name="to_world">
+			<translate x="0" y="0" z="0"/>
+			<scale x="55.4" y="37.65" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-ceiling-2" name="ceiling_2">
+		<transform name="to_world">
+			<translate x="0" y="0" z="3.5"/>
+			<scale x="55.4" y="37.65" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-3" name="window_3">
+		<transform name="to_world">
+			<translate x="0" y="37.65" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="55.4" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-4" name="window_4">
+		<transform name="to_world">
+			<translate x="0" y="-37.65" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="55.4" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-5" name="window_5">
+		<transform name="to_world">
+			<translate x="55.4" y="0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.05" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-6" name="window_6">
+		<transform name="to_world">
+			<translate x="-55.4" y="0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.05" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-7" name="wall_7">
+		<transform name="to_world">
+			<translate x="0.0" y="14.25" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.25" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-8" name="wall_8">
+		<transform name="to_world">
+			<translate x="0.0" y="1.75" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.25" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-9" name="wall_9">
+		<transform name="to_world">
+			<translate x="11.25" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-10" name="wall_10">
+		<transform name="to_world">
+			<translate x="-11.25" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-11" name="wall_11">
+		<transform name="to_world">
+			<translate x="0.0" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.25" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-12" name="window_12">
+		<transform name="to_world">
+			<translate x="-44.32" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-13" name="wall_13">
+		<transform name="to_world">
+			<translate x="-55.4" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-14" name="wall_14">
+		<transform name="to_world">
+			<translate x="-33.24" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-15" name="window_15">
+		<transform name="to_world">
+			<translate x="-22.16" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-16" name="wall_16">
+		<transform name="to_world">
+			<translate x="-33.24" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-17" name="wall_17">
+		<transform name="to_world">
+			<translate x="-11.08" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-18" name="window_18">
+		<transform name="to_world">
+			<translate x="0.0" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-19" name="wall_19">
+		<transform name="to_world">
+			<translate x="-11.08" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-20" name="wall_20">
+		<transform name="to_world">
+			<translate x="11.08" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-21" name="window_21">
+		<transform name="to_world">
+			<translate x="22.160000000000004" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-22" name="wall_22">
+		<transform name="to_world">
+			<translate x="11.080000000000004" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-23" name="wall_23">
+		<transform name="to_world">
+			<translate x="33.24" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-24" name="window_24">
+		<transform name="to_world">
+			<translate x="44.32" y="8.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-25" name="wall_25">
+		<transform name="to_world">
+			<translate x="33.24" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-26" name="wall_26">
+		<transform name="to_world">
+			<translate x="55.4" y="15.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-27" name="window_27">
+		<transform name="to_world">
+			<translate x="-44.32" y="-6.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-28" name="wall_28">
+		<transform name="to_world">
+			<translate x="-55.4" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-29" name="wall_29">
+		<transform name="to_world">
+			<translate x="-33.24" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-30" name="window_30">
+		<transform name="to_world">
+			<translate x="-22.16" y="-6.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-31" name="wall_31">
+		<transform name="to_world">
+			<translate x="-33.24" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-32" name="wall_32">
+		<transform name="to_world">
+			<translate x="-11.08" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-33" name="window_33">
+		<transform name="to_world">
+			<translate x="0.0" y="-6.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-34" name="wall_34">
+		<transform name="to_world">
+			<translate x="-11.08" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-35" name="wall_35">
+		<transform name="to_world">
+			<translate x="11.08" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-36" name="window_36">
+		<transform name="to_world">
+			<translate x="22.160000000000004" y="-6.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-37" name="wall_37">
+		<transform name="to_world">
+			<translate x="11.080000000000004" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-38" name="wall_38">
+		<transform name="to_world">
+			<translate x="33.24" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-39" name="window_39">
+		<transform name="to_world">
+			<translate x="44.32" y="-6.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="11.08" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-40" name="wall_40">
+		<transform name="to_world">
+			<translate x="33.24" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-41" name="wall_41">
+		<transform name="to_world">
+			<translate x="55.4" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.075" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-drywall" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-42" name="wall_42">
+		<transform name="to_world">
+			<translate x="5.0" y="-12.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="1.5" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-concrete" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-window-43" name="window_43">
+		<transform name="to_world">
+			<translate x="39.4" y="0.0" z="1.75"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.05" y="1.75" z="1"/>
+		</transform>
+		<ref id="mat-glass" name="bsdf"/>
+	</shape>
+	<shape type="rectangle" id="shape-wall-44" name="wall_44">
+		<transform name="to_world">
+			<translate x="26.0" y="6.0" z="1.5"/>
+			<rotate x="1" angle="90"/>
+			<scale x="0.15" y="0.25" z="1"/>
+		</transform>
+		<ref id="mat-metal" name="bsdf"/>
+	</shape>
+</scene>

@@ -46,14 +46,14 @@ class BuildingSceneBuilder:
     
     def _build_materials(self):
         unique_materials = set(obj['material'] for obj in self.objects)
-        materials_xml = "<!-- Materials -->\n\n"
+        materials_xml = "\n"
         
         for mat_name in sorted(unique_materials):
             mat_id = f"mat-{mat_name}"
             mat_def = self._get_mat_definition(mat_name, mat_id)
             materials_xml += f"\t{mat_def}\n"
         
-        materials_xml += "\n<!-- Shapes -->\n\n"
+        materials_xml += "\n"
         return materials_xml
     
     def _build_footer(self):
@@ -154,52 +154,81 @@ MEASUREMENT_LOCATIONS = {
 }
 
 def create_kiewit_scene():
-    scene = BuildingSceneBuilder('kiewit_updated')
-    
-    Width_X = ft_to_m(363.53)
-    Depth_Y = ft_to_m(246.91)
-    
-    scene.add_floor([0, 0, 0], [Width_X, Depth_Y, 0.3], 'concrete')
-    scene.add_ceiling([0, 0, 3.5], [Width_X, Depth_Y, 0.1], 'drywall')
-    
-    wall_thick = 0.3
-    scene.add_window([0, Depth_Y/2, 1.75], [Width_X, 0.1, 3.5], 'glass')
-    scene.add_window([0, -Depth_Y/2, 1.75], [Width_X, 0.1, 3.5], 'glass')
-    scene.add_window([Width_X/2, 0, 1.75], [0.1, Depth_Y, 3.5], 'glass')
-    scene.add_window([-Width_X/2, 0, 1.75], [0.1, Depth_Y, 3.5], 'glass')
+    W_m = 110.8
+    D_m = 75.3
+    H_m = 3.5
 
-    core_w = 20.0
-    core_d = 12.0
-    core_x = -5.0
-    core_y = 15.0
-    
-    scene.add_wall([core_x, core_y - core_d/2, 1.75], [core_w, 0.3, 3.5], 'concrete')
-    scene.add_wall([core_x, core_y + core_d/2, 1.75], [core_w, 0.3, 3.5], 'concrete')
-    scene.add_wall([core_x + core_w/2, core_y, 1.75], [0.3, core_d, 3.5], 'concrete')
-    scene.add_wall([core_x - core_w/2, core_y, 1.75], [0.3, core_d, 3.5], 'concrete')
+    scene = BuildingSceneBuilder('kiewit_optionB')
 
-    room_w = 22.0
-    room_d = 14.0
-    
-    room_center_x = 35.0 
-    room_center_y = 5.0 
-    
-    scene.add_wall([room_center_x - room_w/2, room_center_y, 1.75], [0.1, room_d, 3.5], 'drywall')
-    
-    scene.add_wall([room_center_x, room_center_y + room_d/2, 1.75], [room_w, 0.1, 3.5], 'drywall')
-    
-    scene.add_wall([room_center_x, room_center_y - room_d/2, 1.75], [room_w, 0.1, 3.5], 'drywall')
+    scene.add_floor([0, 0, 0], [W_m, D_m, 0.3], 'concrete')
+    scene.add_ceiling([0, 0, H_m], [W_m, D_m, 0.1], 'drywall')
 
-    scan_x = room_center_x - (room_w/2) + 3.0
-    scan_y = room_center_y + 2.0
+    scene.add_window([0, D_m/2, H_m/2], [W_m, 0.1, H_m], 'glass')
+    scene.add_window([0, -D_m/2, H_m/2], [W_m, 0.1, H_m], 'glass')
+    scene.add_window([W_m/2, 0, H_m/2], [0.1, D_m, H_m], 'glass')
+    scene.add_window([-W_m/2, 0, H_m/2], [0.1, D_m, H_m], 'glass')
+
+    core_center_x = 0.0
+    core_center_y = 8.0
+    core_w = 22.5
+    core_d = 12.5
+    core_h = H_m
+
+    scene.add_wall([core_center_x, core_center_y + core_d/2, core_h/2],
+                   [core_w, 0.3, core_h], 'concrete')
+    scene.add_wall([core_center_x, core_center_y - core_d/2, core_h/2],
+                   [core_w, 0.3, core_h], 'concrete')
+    scene.add_wall([core_center_x + core_w/2, core_center_y, core_h/2],
+                   [0.3, core_d, core_h], 'concrete')
+    scene.add_wall([core_center_x - core_w/2, core_center_y, core_h/2],
+                   [0.3, core_d, core_h], 'concrete')
+    scene.add_wall([core_center_x, core_center_y, core_h/2],
+                   [core_w, 0.1, core_h], 'drywall')
+
+    n_rooms = 5
+    room_w = W_m / n_rooms
+    half_w = room_w / 2
+
+    north_y = 15.0
+    north_depth = 14.0
+    for i in range(n_rooms):
+        x_center = -W_m/2 + half_w + i * room_w
+        scene.add_window([x_center, north_y - north_depth/2, H_m/2],
+                         [room_w, 0.1, H_m], 'glass')
+        scene.add_wall([x_center - half_w, north_y, H_m/2], [0.15, north_depth, H_m], 'drywall')
+        scene.add_wall([x_center + half_w, north_y, H_m/2], [0.15, north_depth, H_m], 'drywall')
+
+    south_y = -12.0
+    south_depth = 12.0
+    for i in range(n_rooms):
+        x_center = -W_m/2 + half_w + i * room_w
+        scene.add_window([x_center, south_y + south_depth/2, H_m/2],
+                         [room_w, 0.1, H_m], 'glass')
+        scene.add_wall([x_center - half_w, south_y, H_m/2], [0.15, south_depth, H_m], 'drywall')
+        scene.add_wall([x_center + half_w, south_y, H_m/2], [0.15, south_depth, H_m], 'drywall')
+
+    scene.add_wall([5.0, south_y, H_m/2], [3.0, south_depth, H_m], 'concrete')
+
+    a310_w = 14.0
+    a310_d = 40.0
+    a310_x = W_m/2 - a310_w/2 - 2.0
+    a310_y = 0.0
+    scene.add_window([a310_x - a310_w/2, a310_y, H_m/2], [0.1, a310_d, H_m], 'glass')
+
+    scan_x = 26.0
+    scan_y = 6.0
     scan_z = 1.5
-    
-    print(f"\n[Kiewit Configuration]")
-    print(f"Room A.310 Center: ({room_center_x}, {room_center_y})")
-    print(f"RED STAR LOCATION (Receiver): x={scan_x:.2f}, y={scan_y:.2f}, z={scan_z}")
-    print(f"Suggested Transmitter Location (Lobby/Elevator): x={core_x}, y={core_y - 15.0}, z=1.5")
+    scene.add_wall([scan_x, scan_y, scan_z], [0.3, 0.3, 0.5], 'metal')
+
+    print("\n[Approximate Kiewit Hall — Option B]")
+    print(f" Building footprint: {W_m:.2f} m x {D_m:.2f} m")
+    print(f" Room width (each of 5): {room_w:.3f} m")
+    print(f" Core center: x={core_center_x:.2f}, y={core_center_y:.2f}, w={core_w:.2f}, d={core_d:.2f}")
+    print(" North rooms at y=+15 m, depth=14 m. South rooms at y=-12 m, depth=12 m.")
+    print(f" Receiver approx: x={scan_x}, y={scan_y}, z={scan_z}")
 
     return scene
+
 
 def create_adele_coryell_scene():
     scene = BuildingSceneBuilder('adele_coryell_updated')
@@ -303,7 +332,6 @@ def create_love_library_south_scene():
     
     print(f"\n[Love Library South Configuration]")
     print(f"RED STAR LOCATION (Receiver): x={scan_x:.2f}, y={scan_y:.2f}, z={scan_z}")
-    print(f"  (Located in Central Atrium, North of Elevators)")
     
     return scene
 
@@ -567,7 +595,6 @@ def create_memorial_stadium_scene():
     
     print(f"\n[Memorial Stadium Configuration]")
     print(f"RED STAR LOCATION (Receiver): x={scan_x:.2f}, y={scan_y:.2f}, z={scan_z}")
-    print(f"  (Located in West Stadium Indoor Club, Elevation ~15m)")
     
     return scene
 
@@ -604,7 +631,6 @@ def main():
     print("SCENE GENERATION COMPLETE")
     print("="*70)
     
-    # Print measurement locations for reference
     print("\nMeasurement Locations (in building coordinates):")
     for building, locations in MEASUREMENT_LOCATIONS.items():
         print(f"\n{building}:")
